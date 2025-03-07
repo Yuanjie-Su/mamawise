@@ -2,168 +2,458 @@
 <view class="container records-container">
   <view class="records-header">
     <view class="title">健康档案</view>
-    <view class="header-actions">
-      <view class="chat-btn" bindtap="navigateToChat">咨询</view>
-      <view class="add-btn" bindtap="addNewRecord">添加记录</view>
-    </view>
   </view>
   
-  <!-- 标签页导航 -->
-  <view class="tabs">
-    <view 
-      wx:for="{{tabs}}" 
-      wx:key="index" 
-      class="tab-item {{activeTab === index ? 'active' : ''}}"
-      bindtap="switchTab"
-      data-index="{{index}}">
-      {{item}}
-    </view>
-  </view>
-  
-  <!-- 标签页内容 -->
-  <view class="tab-content">
-    <!-- 基本信息 -->
-    <view class="tab-pane" hidden="{{activeTab !== 0}}">
-      <view class="info-card">
-        <view class="card-title">孕期信息</view>
-        <view class="info-item">
-          <text class="info-label">当前孕周</text>
-          <text class="info-value">{{pregnancyInfo.week}}周</text>
-        </view>
-        <view class="info-item">
-          <text class="info-label">预产期</text>
-          <text class="info-value">{{pregnancyInfo.dueDate}}</text>
-        </view>
-        <view class="info-item">
-          <text class="info-label">末次产检</text>
-          <text class="info-value">{{pregnancyInfo.lastCheckup}}</text>
-        </view>
+  <!-- 未登录或未完善个人信息时的提示 -->
+  <view class="auth-tip-container" wx:if="{{!isLoggedIn || !hasPersonalInfo}}">
+    <view class="auth-tip">
+      <image class="auth-tip-icon" src="/images/profile.png"></image>
+      <view class="auth-tip-text">
+        <text wx:if="{{!isLoggedIn}}">请先登录后查看健康档案</text>
+        <text wx:elif="{{!hasPersonalInfo}}">请先完善个人信息后查看健康档案</text>
       </view>
-      
-      <view class="info-card">
-        <view class="card-title">过敏信息</view>
-        <view class="allergy-list">
-          <view class="allergy-item" wx:for="{{healthRecords.allergies}}" wx:key="index">
-            {{item}}
+      <button class="auth-tip-btn" bindtap="navigateToProfile">去登录</button>
+    </view>
+  </view>
+  
+  <!-- 已登录且已完善个人信息时显示内容 -->
+  <block wx:if="{{isLoggedIn && hasPersonalInfo}}">
+    <!-- 标签页导航 -->
+    <view class="tabs">
+      <view 
+        wx:for="{{tabs}}" 
+        wx:key="index" 
+        class="tab-item {{activeTab === index ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-index="{{index}}">
+        {{item}}
+      </view>
+    </view>
+    
+    <!-- 标签页内容 -->
+    <view class="tab-content">
+      <!-- 基本信息 -->
+      <view class="tab-pane" hidden="{{activeTab !== 0}}">
+        <view class="info-card">
+          <view class="card-title">孕期信息</view>
+          <view class="info-item">
+            <text class="info-label">当前孕周</text>
+            <text class="info-value">{{pregnancyInfo.week}}周</text>
           </view>
-          <view class="empty-tip" wx:if="{{!healthRecords.allergies || healthRecords.allergies.length === 0}}">
+          <view class="info-item">
+            <text class="info-label">预产期</text>
+            <text class="info-value">{{pregnancyInfo.dueDate}}</text>
+          </view>
+          <view class="info-item" wx:if="{{pregnancyInfo.lastCheckup}}">
+            <text class="info-label">末次产检</text>
+            <text class="info-value">{{pregnancyInfo.lastCheckup}}</text>
+          </view>
+        </view>
+        
+        <view class="info-card">
+          <view class="card-title">
+            <text>过敏信息</text>
+            <view class="add-info-btn" bindtap="showAddAllergyForm">添加</view>
+          </view>
+          <view class="allergy-list" wx:if="{{healthRecords.allergies && healthRecords.allergies.length > 0}}">
+            <view class="allergy-item" wx:for="{{healthRecords.allergies}}" wx:key="index">
+              {{item}}
+            </view>
+          </view>
+          <view class="empty-tip" wx:else>
             暂无过敏信息
           </view>
         </view>
-      </view>
-      
-      <view class="info-card">
-        <view class="card-title">医生备注</view>
-        <view class="notes-list">
-          <view class="note-item" wx:for="{{notes}}" wx:key="date">
-            <view class="note-date">{{item.date}}</view>
-            <view class="note-content">{{item.content}}</view>
+        
+        <view class="info-card">
+          <view class="card-title">
+            <text>饮食偏好</text>
+            <view class="add-info-btn" bindtap="showAddDietPreferenceForm">添加</view>
           </view>
-          <view class="empty-tip" wx:if="{{!notes || notes.length === 0}}">
-            暂无医生备注
-          </view>
-        </view>
-      </view>
-    </view>
-    
-    <!-- 体征记录 -->
-    <view class="tab-pane" hidden="{{activeTab !== 1}}">
-      <view class="vitals-section">
-        <view class="section-header">
-          <text>血压记录</text>
-        </view>
-        <view class="vitals-list">
-          <view class="vitals-item" wx:for="{{vitalsRecords.bloodPressure}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
-            <view class="vitals-date">{{item.date}}</view>
-            <view class="vitals-value">{{item.value}} mmHg</view>
-            <view class="arrow">></view>
-          </view>
-          <view class="empty-tip" wx:if="{{!vitalsRecords.bloodPressure || vitalsRecords.bloodPressure.length === 0}}">
-            暂无血压记录
-          </view>
-        </view>
-      </view>
-      
-      <view class="vitals-section">
-        <view class="section-header">
-          <text>体重记录</text>
-        </view>
-        <view class="vitals-list">
-          <view class="vitals-item" wx:for="{{vitalsRecords.weight}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
-            <view class="vitals-date">{{item.date}}</view>
-            <view class="vitals-value">{{item.value}} kg</view>
-            <view class="arrow">></view>
-          </view>
-          <view class="empty-tip" wx:if="{{!vitalsRecords.weight || vitalsRecords.weight.length === 0}}">
-            暂无体重记录
-          </view>
-        </view>
-      </view>
-      
-      <view class="vitals-section">
-        <view class="section-header">
-          <text>血糖记录</text>
-        </view>
-        <view class="vitals-list">
-          <view class="vitals-item" wx:for="{{vitalsRecords.bloodSugar}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
-            <view class="vitals-date">{{item.date}}</view>
-            <view class="vitals-value">{{item.value}} mmol/L</view>
-            <view class="arrow">></view>
-          </view>
-          <view class="empty-tip" wx:if="{{!vitalsRecords.bloodSugar || vitalsRecords.bloodSugar.length === 0}}">
-            暂无血糖记录
-          </view>
-        </view>
-      </view>
-    </view>
-    
-    <!-- 用药记录 -->
-    <view class="tab-pane" hidden="{{activeTab !== 2}}">
-      <view class="medication-list">
-        <view class="medication-item" wx:for="{{medications}}" wx:key="name">
-          <view class="medication-info">
-            <view class="medication-name">{{item.name}}</view>
-            <view class="medication-details">
-              <text>剂量: {{item.dosage}}</text>
-              <text>频率: {{item.frequency}}</text>
+          <view class="allergy-list" wx:if="{{healthRecords.dietPreferences && healthRecords.dietPreferences.length > 0}}">
+            <view class="allergy-item" wx:for="{{healthRecords.dietPreferences}}" wx:key="index">
+              {{item}}
             </view>
           </view>
-          <view class="medication-actions">
-            <view class="edit-btn">编辑</view>
+          <view class="empty-tip" wx:else>
+            暂无饮食偏好
           </view>
-        </view>
-        <view class="empty-tip" wx:if="{{!medications || medications.length === 0}}">
-          暂无用药记录
         </view>
       </view>
-    </view>
-    
-    <!-- 产检记录 -->
-    <view class="tab-pane" hidden="{{activeTab !== 3}}">
-      <view class="checkup-list">
-        <view class="checkup-item" wx:for="{{checkupRecords}}" wx:key="date">
-          <view class="checkup-header">
-            <view class="checkup-date">{{item.date}}</view>
-            <view class="checkup-week">孕{{item.week}}周</view>
+      
+      <!-- 体征记录 -->
+      <view class="tab-pane" hidden="{{activeTab !== 1}}">
+        <!-- 血压记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>血压记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodPressure">添加</view>
           </view>
-          <view class="checkup-body">
-            <view class="checkup-hospital">{{item.hospital}}</view>
-            <view class="checkup-doctor">医生: {{item.doctor}}</view>
-            <view class="checkup-items">
-              <view class="checkup-item-row" wx:for="{{item.items}}" wx:for-item="checkItem" wx:key="name">
-                <text class="item-name">{{checkItem.name}}:</text>
-                <text class="item-value">{{checkItem.value}}</text>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.bloodPressure}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} mmHg</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.bloodPressure || vitalsRecords.bloodPressure.length === 0}}">
+              暂无血压记录
+            </view>
+          </view>
+        </view>
+        
+        <!-- 体重记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>体重记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="weight">添加</view>
+          </view>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.weight}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} kg</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.weight || vitalsRecords.weight.length === 0}}">
+              暂无体重记录
+            </view>
+          </view>
+        </view>
+        
+        <!-- 血糖记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>血糖记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodSugar">添加</view>
+          </view>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.bloodSugar}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} mmol/L</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.bloodSugar || vitalsRecords.bloodSugar.length === 0}}">
+              暂无血糖记录
+            </view>
+          </view>
+        </view>
+        
+        <!-- 体温记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>体温记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="temperature">添加</view>
+          </view>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.temperature}}" wx:key="date" bindtap="viewDetail" data-type="体温" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} °C</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.temperature || vitalsRecords.temperature.length === 0}}">
+              暂无体温记录
+            </view>
+          </view>
+        </view>
+        
+        <!-- 心率记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>心率记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="heartRate">添加</view>
+          </view>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.heartRate}}" wx:key="date" bindtap="viewDetail" data-type="心率" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} 次/分</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.heartRate || vitalsRecords.heartRate.length === 0}}">
+              暂无心率记录
+            </view>
+          </view>
+        </view>
+        
+        <!-- 胎动记录 -->
+        <view class="vitals-section">
+          <view class="section-header">
+            <text>胎动记录</text>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="fetalMovement">添加</view>
+          </view>
+          <view class="vitals-list">
+            <view class="vitals-item" wx:for="{{vitalsRecords.fetalMovement}}" wx:key="date" bindtap="viewDetail" data-type="胎动" data-index="{{index}}">
+              <view class="vitals-date">{{item.date}} {{item.time}}</view>
+              <view class="vitals-value">{{item.value}} 次/小时</view>
+              <view class="arrow">></view>
+            </view>
+            <view class="empty-tip" wx:if="{{!vitalsRecords.fetalMovement || vitalsRecords.fetalMovement.length === 0}}">
+              暂无胎动记录
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 用药记录 -->
+      <view class="tab-pane" hidden="{{activeTab !== 2}}">
+        <view class="medication-section">
+          <view class="section-header">
+            <text>用药记录</text>
+            <view class="add-info-btn" bindtap="showAddMedicationForm">添加</view>
+          </view>
+          <view class="medication-list">
+            <view class="medication-item" wx:for="{{medications}}" wx:key="index" bindtap="showEditMedicationForm" data-index="{{index}}">
+              <view class="medication-info">
+                <view class="medication-name">
+                  {{item.name}}
+                  <text class="medication-type" wx:if="{{item.type}}">{{item.type}}</text>
+                </view>
+                <view class="medication-details">
+                  <text class="medication-dosage">{{item.dosage}}</text>
+                  <text class="medication-frequency">{{item.frequency}}</text>
+                  <text class="medication-time" wx:if="{{item.time}}">{{item.time}}</text>
+                </view>
+                <view class="medication-dates" wx:if="{{item.startDate}}">
+                  <text>{{item.startDate}} 至 {{item.endDate || '长期'}}</text>
+                </view>
+              </view>
+              <view class="medication-actions">
+                <view class="edit-btn" catchtap="showEditMedicationForm" data-index="{{index}}">编辑</view>
+                <view class="delete-btn" catchtap="deleteMedication" data-index="{{index}}">删除</view>
               </view>
             </view>
-            <view class="checkup-notes">
-              <text class="notes-label">医嘱:</text>
-              <text class="notes-content">{{item.notes}}</text>
+            
+            <!-- 没有记录时显示提示 -->
+            <view class="empty-tip" wx:if="{{!medications || medications.length === 0}}">
+              暂无用药记录
             </view>
           </view>
         </view>
-        <view class="empty-tip" wx:if="{{!checkupRecords || checkupRecords.length === 0}}">
-          暂无产检记录
+      </view>
+      
+      <!-- 产检记录 -->
+      <view class="tab-pane" hidden="{{activeTab !== 3}}">
+        <view class="section-header">
+          <text>产检记录</text>
+          <view class="add-info-btn" bindtap="uploadCheckupRecord">添加</view>
         </view>
+        
+        <!-- 历史产检记录分析结果 -->
+        <view class="info-card" wx:if="{{healthRecords.checkupAnalysis}}">
+          <view class="card-title">产检记录分析</view>
+          <view class="analysis-content">{{healthRecords.checkupAnalysis}}</view>
+        </view>
+        
+        <view class="checkup-list">
+          <view class="checkup-item" wx:for="{{checkupRecords}}" wx:key="date">
+            <view class="checkup-header">
+              <view class="checkup-date">{{item.date}}</view>
+              <view class="checkup-week">孕{{item.week}}周</view>
+            </view>
+            <view class="checkup-body">
+              <view class="checkup-hospital">{{item.hospital}}</view>
+              <view class="checkup-doctor">医生: {{item.doctor}}</view>
+              <view class="checkup-items">
+                <view class="checkup-item-row" wx:for="{{item.items}}" wx:for-item="checkItem" wx:key="name">
+                  <text class="item-name">{{checkItem.name}}:</text>
+                  <text class="item-value">{{checkItem.value}}</text>
+                </view>
+              </view>
+              <view class="checkup-notes">
+                <text class="notes-label">医嘱:</text>
+                <text class="notes-content">{{item.notes}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 没有记录时显示提示 -->
+          <view class="empty-tip" wx:if="{{!checkupRecords || checkupRecords.length === 0}}">
+            暂无产检记录
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+  
+  <!-- 用药表单弹窗 -->
+  <view class="medication-form" wx:if="{{showMedicationForm}}">
+    <view class="form-overlay" bindtap="hideMedicationForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">{{editingMedication ? '编辑用药' : '添加用药'}}</text>
+        <view class="close-btn" bindtap="hideMedicationForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">药物名称 *</text>
+          <input class="form-input" placeholder="请输入药物名称" value="{{medicationForm.name}}" bindinput="onMedicationInputChange" data-field="name" />
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">药物类型</text>
+          <picker bindchange="onMedicationTypeChange" value="{{medicationForm.typeIndex}}" range="{{medicationTypes}}">
+            <view class="picker-view">
+              <text>{{medicationTypes[medicationForm.typeIndex] || '请选择药物类型'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">剂量 *</text>
+          <input class="form-input" placeholder="请输入剂量，如：5mg、1片" value="{{medicationForm.dosage}}" bindinput="onMedicationInputChange" data-field="dosage" />
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">服用频率 *</text>
+          <input class="form-input" placeholder="请输入频率，如：每日一次、每8小时一次" value="{{medicationForm.frequency}}" bindinput="onMedicationInputChange" data-field="frequency" />
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">服用时间</text>
+          <picker bindchange="onMedicationTimeChange" value="{{medicationForm.timeIndex}}" range="{{medicationTimes}}">
+            <view class="picker-view">
+              <text>{{medicationTimes[medicationForm.timeIndex] || '请选择服用时间'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">开始日期</text>
+          <picker mode="date" bindchange="onStartDateChange" value="{{medicationForm.startDate}}">
+            <view class="picker-view">
+              <text>{{medicationForm.startDate || '请选择开始日期'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">结束日期</text>
+          <picker mode="date" bindchange="onEndDateChange" value="{{medicationForm.endDate}}">
+            <view class="picker-view">
+              <text>{{medicationForm.endDate || '请选择结束日期（可选）'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">备注</text>
+          <textarea class="form-textarea" placeholder="请输入备注信息（可选）" value="{{medicationForm.notes}}" bindinput="onMedicationInputChange" data-field="notes" />
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hideMedicationForm">取消</button>
+        <button class="submit-btn" bindtap="saveMedication">保存</button>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 体征记录表单弹窗 -->
+  <view class="vitals-form" wx:if="{{showVitalsForm}}">
+    <view class="form-overlay" bindtap="hideVitalsForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">{{editingVitals ? '编辑体征记录' : '添加体征记录'}}</text>
+        <view class="close-btn" bindtap="hideVitalsForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">体征类型</text>
+          <view class="vitals-type-display">
+            {{vitalsTypes[vitalsTypeIndex].name}}
+            <text class="vitals-unit">({{vitalsTypes[vitalsTypeIndex].unit}})</text>
+          </view>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">数值 *</text>
+          <picker bindchange="onVitalsValueChange" value="{{vitalsValueIndex}}" range="{{vitalsTypes[vitalsTypeIndex].valueOptions}}">
+            <view class="picker-view">
+              <text>{{vitalsTypes[vitalsTypeIndex].valueOptions[vitalsValueIndex] || '请选择数值'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <view class="value-range-tip">
+            <text wx:if="{{vitalsTypeIndex === 0}}">正常范围：90/60 - 140/90 mmHg</text>
+            <text wx:elif="{{vitalsTypeIndex === 1}}">孕期体重因人而异，请根据医嘱记录</text>
+            <text wx:elif="{{vitalsTypeIndex === 2}}">正常范围：3.9 - 6.1 mmol/L</text>
+            <text wx:elif="{{vitalsTypeIndex === 3}}">正常范围：36.3 - 37.3 °C</text>
+            <text wx:elif="{{vitalsTypeIndex === 4}}">正常范围：60 - 100 次/分</text>
+            <text wx:elif="{{vitalsTypeIndex === 5}}">正常范围：3 - 15 次/小时</text>
+          </view>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">日期 *</text>
+          <picker mode="date" bindchange="onVitalsDateChange" value="{{vitalsForm.date}}">
+            <view class="picker-view">
+              <text>{{vitalsForm.date || '请选择日期'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">时间</text>
+          <picker mode="time" bindchange="onVitalsTimeChange" value="{{vitalsForm.time}}">
+            <view class="picker-view">
+              <text>{{vitalsForm.time || '请选择时间'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">备注</text>
+          <textarea class="form-textarea" placeholder="请输入备注信息（可选）" value="{{vitalsForm.notes}}" bindinput="onVitalsInputChange" data-field="notes" />
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hideVitalsForm">取消</button>
+        <button class="submit-btn" bindtap="saveVitals">保存</button>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 过敏信息表单弹窗 -->
+  <view class="info-form" wx:if="{{showAllergyForm}}">
+    <view class="form-overlay" bindtap="hideAllergyForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">添加过敏信息</text>
+        <view class="close-btn" bindtap="hideAllergyForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">过敏信息 *</text>
+          <input class="form-input" placeholder="请输入过敏信息，如：海鲜、花粉等" value="{{allergyForm.allergy}}" bindinput="onAllergyInputChange" />
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hideAllergyForm">取消</button>
+        <button class="submit-btn" bindtap="saveAllergy">保存</button>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 饮食偏好表单弹窗 -->
+  <view class="info-form" wx:if="{{showDietPreferenceForm}}">
+    <view class="form-overlay" bindtap="hideDietPreferenceForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">添加饮食偏好</text>
+        <view class="close-btn" bindtap="hideDietPreferenceForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">饮食偏好 *</text>
+          <input class="form-input" placeholder="请输入饮食偏好，如：素食、低糖等" value="{{dietPreferenceForm.preference}}" bindinput="onDietPreferenceInputChange" />
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hideDietPreferenceForm">取消</button>
+        <button class="submit-btn" bindtap="saveDietPreference">保存</button>
       </view>
     </view>
   </view>

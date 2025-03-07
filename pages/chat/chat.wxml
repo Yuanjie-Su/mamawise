@@ -1,9 +1,8 @@
 <!--pages/chat/chat.wxml-->
 <view class="container chat-container">
   <view class="chat-header">
-    <view class="title">AI孕期顾问</view>
+    <view class="title">AI助手</view>
     <view class="header-actions">
-      <view class="records-btn" bindtap="navigateToRecords">健康档案</view>
       <view class="clear-btn" bindtap="clearChat">清空</view>
     </view>
   </view>
@@ -19,7 +18,6 @@
     
     <!-- 推荐问题区域，仅在没有消息时显示 -->
     <view class="recommended-questions" wx:if="{{messages.length === 0}}">
-      <view class="recommended-title">您可能想问：</view>
       <view 
         class="recommended-question" 
         wx:for="{{recommendedQuestions}}" 
@@ -32,10 +30,9 @@
     
     <block wx:for="{{messages}}" wx:key="id">
       <!-- 系统消息（AI回复）或用户消息 -->
-      <view class="message-item {{item.type === 'system' ? 'system-message' : 'user-message'}}" id="message-{{item.id}}">
+      <view class="message-item {{item.type === 'system' ? 'system-message' : 'user-message'}}">
         <view class="message-content {{item.type === 'system' ? 'system-content' : 'user-content'}}">
-          <rich-text wx:if="{{item.type === 'system'}}" nodes="{{item.formattedContent}}"></rich-text>
-          <text wx:else>{{item.content}}</text>
+          <text class="message-text">{{item.content}}</text>
         </view>
       </view>
     </block>
@@ -62,7 +59,9 @@
         adjust-position="true"
         cursor-spacing="20"
       />
-      <view class="send-btn {{inputValue ? 'active' : ''}}" bindtap="sendMessage">发送</view>
+      <view class="send-btn" bindtap="sendMessage">
+        <image class="send-icon" src="/images/send.png"></image>
+      </view>
     </view>
   </view>
 </view> 

@@ -17,93 +17,122 @@ Page({
     scrollToMessage: '', 
     // 推荐问题列表，显示在页面上供用户快速选择提问
     recommendedQuestions: [
-      '孕期饮食有什么建议？',
-      '如何缓解孕吐？',
-      '孕期可以做什么运动？'
-    ]
+      '健康饮食有什么建议？',
+      '如何保持良好的作息？',
+      '日常应该注意什么？'
+    ],
+    // 用户登录状态
+    isLoggedIn: false,
+    // 是否已完善个人信息
+    hasPersonalInfo: false,
+    // 天气信息
+    weatherInfo: {
+      icon: '',
+      description: '',
+      temperature: ''
+    },
+    // 节气信息
+    solarTermInfo: '',
   },
 
   onLoad() {
     // 记录页面加载
     Logger.info('聊天页面加载')
     
-    // 加载健康记录
-    if (app.globalData.demoHealthRecords) {
+    // 检查用户登录状态
+    this.checkLoginStatus()
+    
+    // 获取天气和节气信息
+    this.getWeatherInfo()
+    this.getSolarTermInfo()
+  },
+  
+  onShow() {
+    // 每次显示页面时检查登录状态
+    this.checkLoginStatus()
+    
+    // 获取天气和节气信息
+    this.getWeatherInfo()
+    this.getSolarTermInfo()
+  },
+  
+  // 检查用户登录状态和个人信息
+  checkLoginStatus() {
+    const isLoggedIn = app.globalData.isLoggedIn
+    const hasPersonalInfo = app.globalData.hasPersonalInfo
+    
+    this.setData({
+      isLoggedIn: isLoggedIn,
+      hasPersonalInfo: hasPersonalInfo
+    })
+    
+    // 如果用户已登录且已完善个人信息，加载健康记录
+    if (isLoggedIn && hasPersonalInfo) {
+      this.loadHealthRecords()
+    } else {
+      // 未登录或未完善个人信息时，清空健康记录
       this.setData({
-        healthRecords: app.globalData.demoHealthRecords
+        healthRecords: null
       })
-      Logger.debug('健康记录加载成功', app.globalData.demoHealthRecords)
+    }
+  },
+  
+  // 加载健康记录
+  loadHealthRecords() {
+    if (app.globalData.healthRecords) {
+      this.setData({
+        healthRecords: app.globalData.healthRecords
+      })
+      Logger.debug('健康记录加载成功', app.globalData.healthRecords)
     } else {
       Logger.warn('未找到健康记录数据')
     }
   },
 
-  onShow() {
-    this.scrollToBottom()
-    Logger.debug('聊天页面显示')
-  },
-
-  // 输入框内容变化
   onInputChange(e) {
     this.setData({
       inputValue: e.detail.value
     })
   },
 
-  // 点击推荐问题
   onRecommendedQuestion(e) {
     const question = e.currentTarget.dataset.question
-    Logger.info('用户点击推荐问题', { question })
-    
-    // 添加用户消息
-    const userMessage = {
-      id: this.data.messages.length + 1,
-      type: 'user',
-      content: question
-    }
-    
     this.setData({
-      messages: [...this.data.messages, userMessage],
-      isLoading: true,
-      scrollToMessage: `message-${userMessage.id}`
+      inputValue: question
+    }, () => {
+      this.sendMessage()
     })
-    
-    this.scrollToBottom()
-    
-    // 开始生成AI回复
-    this.generateAIResponse(question)
   },
 
   // 发送消息
   sendMessage() {
-    if (!this.data.inputValue.trim() || this.data.isLoading) return
+    const { inputValue } = this.data
+    if (!inputValue.trim()) return
     
+    // 添加用户消息
+    const userMessageId = this.data.messages.length + 1
     const userMessage = {
-      id: this.data.messages.length + 1,
+      id: userMessageId,
       type: 'user',
-      content: this.data.inputValue
+      content: inputValue
     }
-    
-    Logger.info('用户发送消息', { content: userMessage.content })
     
     this.setData({
       messages: [...this.data.messages, userMessage],
       inputValue: '',
-      isLoading: true,
-      scrollToMessage: `message-${userMessage.id}`
+      isLoading: true
+    }, () => {
+      // 滚动到底部
+      this.scrollToBottom()
+      
+      // 生成AI回复
+      this.generateAIResponse(inputValue)
     })
-    
-    this.scrollToBottom()
-    
-    // 开始生成AI回复
-    this.generateAIResponse(userMessage.content)
   },
 
   // 生成AI回复
   async generateAIResponse(userQuery) {
     try {
-      Logger.debug('开始生成AI回复', { query: userQuery })
-      
       // 初始化AI回复消息
       const aiMessageId = this.data.messages.length + 1
       const initialAiMessage = {
@@ -115,12 +144,14 @@ Page({
       
       this.setData({
         messages: [...this.data.messages, initialAiMessage],
-        scrollToMessage: `message-${aiMessageId}`
+        isLoading: true
+      }, () => {
+        // 滚动到底部
+        this.scrollToBottom()
       })
       
       try {
         // 创建模型并获取流式响应
-        Logger.debug('准备调用AI模型')
         const model = wx.cloud.extend.AI.createModel("deepseek")
         const res = await model.streamText({
           data: {
@@ -138,8 +169,6 @@ Page({
           }
         })
         
-        Logger.info('AI模型调用成功，开始处理流式响应')
-        
         // 处理流式响应
         for await (let event of res.eventStream) {
           if (event.data === '[DONE]') break
@@ -151,298 +180,174 @@ Page({
             // 更新消息内容
             const updatedMessages = [...this.data.messages]
             updatedMessages[updatedMessages.length - 1].content += text
-            updatedMessages[updatedMessages.length - 1].formattedContent = 
-              this.formatMarkdown(updatedMessages[updatedMessages.length - 1].content)
             
             this.setData({
-              messages: updatedMessages,
-              scrollToMessage: `message-${aiMessageId}`
+              messages: updatedMessages
+            }, () => {
+              // 每次更新内容后滚动到底部
+              this.scrollToBottom()
             })
           }
         }
         
-        Logger.info('AI回复生成完成')
-      } catch (apiError) {
-        Logger.error('AI模型调用失败', apiError)
+        // 响应完成后
+        this.setData({
+          isLoading: false
+        }, () => {
+          // 确保最后一次滚动到底部
+          this.scrollToBottom()
+        })
+      } catch (error) {
+        // 处理错误情况
+        this.setData({
+          isLoading: false
+        })
         
-        // 如果API调用失败，回退到模拟响应
-        Logger.info('回退到模拟响应')
-        
-        // 模拟流式响应
-        const aiResponse = this.generateMockResponse(userQuery)
-        
-        // 模拟流式输出
-        let displayedResponse = ''
-        const chunks = this.splitIntoChunks(aiResponse, 5)
-        
-        for (let i = 0; i < chunks.length; i++) {
-          await this.sleep(100)
-          displayedResponse += chunks[i]
-          
-          // 更新消息内容
-          const updatedMessages = [...this.data.messages]
-          updatedMessages[updatedMessages.length - 1].content = displayedResponse
-          updatedMessages[updatedMessages.length - 1].formattedContent = this.formatMarkdown(displayedResponse)
-          
-          this.setData({
-            messages: updatedMessages,
-            scrollToMessage: `message-${aiMessageId}`
-          })
+        // 添加错误消息
+        const errorMessage = {
+          id: this.data.messages.length + 1,
+          type: 'system',
+          content: '抱歉，AI回复生成失败，请稍后再试。',
+          formattedContent: '<p style="color: #ff4d4f;">抱歉，AI回复生成失败，请稍后再试。</p>'
         }
+        
+        this.setData({
+          messages: [...this.data.messages, errorMessage]
+        }, () => {
+          this.scrollToBottom()
+        })
       }
     } catch (error) {
-      // 错误处理
-      Logger.error('生成AI回复过程中发生错误', error)
-      
-      const errorMessage = {
-        id: this.data.messages.length + 1,
-        type: 'system',
-        content: '抱歉，AI助手暂时无法响应，请稍后再试',
-        formattedContent: '抱歉，AI助手暂时无法响应，请稍后再试'
-      }
-      
-      this.setData({
-        messages: [...this.data.messages, errorMessage],
-        scrollToMessage: `message-${errorMessage.id}`
-      })
-      
-      wx.showToast({
-        title: '获取回复失败',
-        icon: 'none'
-      })
-    } finally {
       this.setData({
         isLoading: false
       })
-      this.scrollToBottom()
     }
   },
 
   // 构建系统提示词
   buildSystemPrompt() {
-    Logger.debug('构建系统提示词')
-    
-    const healthRecords = this.data.healthRecords || {}
-    let prompt = '你是一个专业的孕期顾问AI助手。你的任务是为孕妇提供准确、科学、温暖的孕期指导和建议。'
-    
-    // 添加孕期信息
-    if (healthRecords.pregnancy) {
-      const { week, dueDate, lastCheckup } = healthRecords.pregnancy
-      prompt += `\n\n用户当前孕周为${week}周，预产期为${dueDate}，最近一次产检日期为${lastCheckup}。`
-    }
-    
-    // 添加体征信息
-    if (healthRecords.vitals) {
-      prompt += '\n\n用户最近的体征记录：'
-      
-      if (healthRecords.vitals.bloodPressure && healthRecords.vitals.bloodPressure.length > 0) {
-        const latestBP = healthRecords.vitals.bloodPressure[0]
-        prompt += `\n- 血压（${latestBP.date}）：${latestBP.value}`
-      }
-      
-      if (healthRecords.vitals.weight && healthRecords.vitals.weight.length > 0) {
-        const latestWeight = healthRecords.vitals.weight[0]
-        prompt += `\n- 体重（${latestWeight.date}）：${latestWeight.value}kg`
-      }
-      
-      if (healthRecords.vitals.bloodSugar && healthRecords.vitals.bloodSugar.length > 0) {
-        const latestBS = healthRecords.vitals.bloodSugar[0]
-        prompt += `\n- 血糖（${latestBS.date}）：${latestBS.value}mmol/L`
-      }
-    }
-    
-    // 添加用药信息
-    if (healthRecords.medications && healthRecords.medications.length > 0) {
-      prompt += '\n\n用户当前用药：'
-      healthRecords.medications.forEach(med => {
-        prompt += `\n- ${med.name}（${med.dosage}，${med.frequency}）`
-      })
-    }
-    
-    // 添加过敏信息
-    if (healthRecords.allergies && healthRecords.allergies.length > 0) {
-      prompt += '\n\n用户过敏史：' + healthRecords.allergies.join('、')
-    }
-    
-    // 添加医生备注
-    if (healthRecords.notes && healthRecords.notes.length > 0) {
-      const latestNote = healthRecords.notes[0]
-      prompt += `\n\n最近医生备注（${latestNote.date}）：${latestNote.content}`
-    }
-    
-    prompt += '\n\n请确保你的回答：'
-    prompt += '\n1. 基于医学事实和科学研究'
-    prompt += '\n2. 语气温和、鼓励和支持'
-    prompt += '\n3. 不提供可能有害的建议'
-    prompt += '\n4. 对于严重的医疗问题，建议用户咨询医生'
-    prompt += '\n5. 考虑用户当前的孕周和健康状况，提供针对性的建议'
-    
-    Logger.debug('系统提示词构建完成', { promptLength: prompt.length })
-    return prompt
-  },
+    let systemPrompt = `你是一位专业的AI助手，名为"智慧助手"。你的任务是为用户提供准确、科学的健康建议和知识。
+请根据用户的问题，提供简洁明了的回答，避免过长的内容。
+回答应当基于医学共识和科学研究，避免提供有争议的建议。
+如果用户询问的问题超出你的能力范围或需要专业医疗诊断，请建议用户咨询医生。
+请使用友善、温暖的语气，避免使用过于专业的医学术语，确保普通用户能够理解。`
 
-  // 模拟生成回复内容
-  generateMockResponse(userQuery) {
-    Logger.debug('使用模拟回复', { query: userQuery })
-    
-    const healthRecords = this.data.healthRecords || {}
-    const pregnancyWeek = healthRecords.pregnancy ? healthRecords.pregnancy.week : 24
-    
-    // 根据用户问题和健康记录生成回复
-    if (userQuery.includes('孕吐') || userQuery.includes('恶心')) {
-      let response = `## 缓解孕吐的方法\n根据您目前**孕${pregnancyWeek}周**的情况，孕吐症状应该已经有所缓解。如果仍然持续，可以尝试：\n- 少食多餐，避免空腹\n- 早晨起床前先吃些干的饼干\n- 避免刺激性气味\n- 保持充分休息`
+    // 添加天气和节气信息
+    systemPrompt += `\n\n今日环境信息：
+- 天气：${this.data.weatherInfo.description}，${this.data.weatherInfo.temperature}°C
+- 节气：${this.data.solarTermInfo}`
+
+    // 如果用户已登录且已完善个人信息，添加个性化信息
+    if (this.data.isLoggedIn && this.data.hasPersonalInfo && this.data.healthRecords) {
+      const records = this.data.healthRecords
       
-      // 如果有医生备注，添加相关信息
-      if (healthRecords.notes && healthRecords.notes.length > 0 && healthRecords.notes[0].content.includes('孕吐')) {
-        response += `\n> 根据您的医生记录，医生也提到了您的孕吐情况，建议您遵循医嘱。`
+      systemPrompt += `\n\n用户当前信息：
+- 孕周：${records.pregnancy.week}周
+- 预产期：${records.pregnancy.dueDate}`
+
+      // 添加末次产检信息（如果有）
+      if (records.pregnancy.lastCheckup) {
+        systemPrompt += `\n- 最近一次产检：${records.pregnancy.lastCheckup}`
+      }
+
+      // 添加体征信息
+      if (records.vitals && records.vitals.bloodPressure && records.vitals.bloodPressure.length > 0) {
+        systemPrompt += `\n- 最近血压：${records.vitals.bloodPressure[0].value}`
       }
       
-      response += '\n**注意**：如果症状严重，请及时咨询医生。'
-      return response
-    } else if (userQuery.includes('饮食') || userQuery.includes('吃什么')) {
-      let response = `## 孕${pregnancyWeek}周饮食指南\n在**孕${pregnancyWeek}周**，您应该保证均衡饮食，特别是富含铁、钙和蛋白质的食物。`
+      if (records.vitals && records.vitals.weight && records.vitals.weight.length > 0) {
+        systemPrompt += `\n- 最近体重：${records.vitals.weight[0].value}kg`
+      }
       
       // 添加过敏信息
-      if (healthRecords.allergies && healthRecords.allergies.length > 0) {
-        response += `\n> **注意**：考虑到您对${healthRecords.allergies.join('、')}过敏，请避免食用这些食物及其制品。`
+      if (records.allergies && records.allergies.length > 0) {
+        systemPrompt += `\n- 过敏史：${records.allergies.join(', ')}`
       }
       
-      response += `\n### 饮食建议\n根据您的健康记录，没有其他特殊的饮食禁忌，但注意：\n1. 避免生食、未煮熟的肉类\n2. 限制高汞鱼类摄入\n3. 每天摄入约2000-2200卡路里的热量\n4. 多吃新鲜蔬果\n5. 保证充足的水分摄入`
-      
-      // 添加体重信息
-      if (healthRecords.vitals && healthRecords.vitals.weight && healthRecords.vitals.weight.length > 0) {
-        response += `\n您目前的体重为${healthRecords.vitals.weight[0].value}kg，体重增长情况正常，继续保持良好的饮食习惯。`
+      // 添加饮食偏好信息
+      if (records.dietPreferences && records.dietPreferences.length > 0) {
+        systemPrompt += `\n- 饮食偏好：${records.dietPreferences.join(', ')}`
       }
       
-      return response
-    } else if (userQuery.includes('运动') || userQuery.includes('锻炼')) {
-      let response = `## 孕期运动指南\n**孕${pregnancyWeek}周**可以进行适度的运动，如：\n- 散步\n- 孕妇瑜伽\n- 游泳`
-      
-      // 添加体征信息
-      if (healthRecords.vitals) {
-        if (healthRecords.vitals.bloodPressure && healthRecords.vitals.bloodPressure.length > 0) {
-          const bp = healthRecords.vitals.bloodPressure[0].value
-          if (bp.split('/')[0] > 130 || bp.split('/')[1] > 85) {
-            response += `\n> **注意**：您的血压为${bp}mmHg，略高于正常水平，建议进行温和的运动，避免剧烈活动，并定期监测血压。`
-          } else {
-            response += `\n您的血压为${bp}mmHg，在正常范围内，可以适度运动。`
-          }
-        }
-        
-        if (healthRecords.vitals.weight && healthRecords.vitals.weight.length > 0) {
-          response += `\n您的体重增长情况正常，可以每天进行30分钟的轻度到中度运动。`
-        }
+      // 添加用药信息
+      if (records.medications && records.medications.length > 0) {
+        systemPrompt += `\n- 当前用药：${records.medications.map(med => `${med.name} ${med.dosage} ${med.frequency}`).join(', ')}`
       }
       
-      response += `\n**重要提示**：要**避免剧烈运动**和有跌倒风险的活动。运动时如感到不适，应立即停止并休息。`
-      return response
-    } else if (userQuery.includes('胎动') || userQuery.includes('胎儿')) {
-      return `## 胎动与胎儿发育\n在**孕${pregnancyWeek}周**，胎儿的胎动应该已经很明显了。健康的胎动频率一般是每小时3-5次。\n根据您的健康记录，您的胎儿发育正常。如果您注意到胎动突然减少或增加，或有任何异常，应及时联系医生。\n### 胎教建议\n现在胎儿已能听到外界声音，可以尝试与宝宝进行语言互动，这对胎儿的听觉发育有益。`
-    } else if (userQuery.includes('睡眠') || userQuery.includes('失眠')) {
-      let response = `## 孕期睡眠指南\n孕中期睡眠问题很常见。建议您：\n1. 采取左侧卧位睡姿\n2. 使用孕妇枕支撑腹部和背部\n3. 睡前避免摄入咖啡因\n4. 可以喝一杯温牛奶帮助入睡\n5. 保持规律的作息时间\n6. 睡前可以做些轻柔的伸展运动或冥想`
-      
-      // 如果正在服用药物
-      if (healthRecords.medications && healthRecords.medications.length > 0) {
-        response += `\n> **用药提示**：请注意，您目前正在服用的${healthRecords.medications.map(m => m.name).join('、')}可能会影响睡眠质量。如果您怀疑药物导致睡眠问题，请咨询医生，但不要自行停药。`
+      // 添加产检记录分析信息
+      if (records.checkupAnalysis) {
+        systemPrompt += `\n- 产检记录分析：${records.checkupAnalysis}`
       }
       
-      response += '\n**注意**：如果失眠严重影响生活，请咨询医生。'
-      
-      return response
-    } else if (userQuery.includes('日志') || userQuery.includes('log')) {
-      return `## 系统日志功能\n系统日志功能已经实现，所有操作和错误都会被记录到本地文件中。\n日志分为以下几个级别：\n- **调试(DEBUG)**：详细的技术信息，主要用于开发调试\n- **信息(INFO)**：正常操作的信息记录\n- **警告(WARN)**：潜在问题的警告，但不影响主要功能\n- **错误(ERROR)**：导致功能无法正常工作的错误\n日志文件存储在小程序的用户数据目录下，开发人员可以通过开发工具查看和导出日志文件进行分析。`
+      systemPrompt += `\n\n请根据用户的健康记录提供个性化的建议。特别注意用户的过敏史和饮食偏好，在提供饮食建议时避免推荐用户过敏的食物，并尊重用户的饮食偏好。同时，考虑当前的天气和节气情况，提供更加适合的健康建议。`
     } else {
-      let response = `## 孕期健康建议\n感谢您的提问。作为您的孕期AI助手，我会根据您目前**孕${pregnancyWeek}周**的情况和健康记录提供建议。`
-      
-      // 添加健康状况摘要
-      response += '\n### 您的健康状况摘要\n根据您的健康记录：'
-      
-      if (healthRecords.vitals) {
-        if (healthRecords.vitals.bloodPressure && healthRecords.vitals.bloodPressure.length > 0) {
-          response += `\n- 血压：${healthRecords.vitals.bloodPressure[0].value}mmHg`
-        }
-        if (healthRecords.vitals.weight && healthRecords.vitals.weight.length > 0) {
-          response += `\n- 体重：${healthRecords.vitals.weight[0].value}kg`
-        }
-      }
-      
-      if (healthRecords.medications && healthRecords.medications.length > 0) {
-        response += `\n- 当前用药：${healthRecords.medications.map(m => m.name).join('、')}`
-      }
-      
-      response += '\n您现在的各项指标都在正常范围内，继续保持良好的生活习惯很重要。这个阶段，胎儿正在快速发育，特别是大脑和神经系统。\n如果您有特定的健康问题或疑虑，请详细描述，我会为您提供更精确的建议。'
-      
-      return response
+      // 如果用户未登录或未完善个人信息，也添加天气和节气相关建议
+      systemPrompt += `\n\n请在回答用户问题时，适当考虑当前的天气和节气情况，提供更加贴合实际环境的健康建议。`
     }
+    
+    return systemPrompt
   },
 
   // 简单Markdown格式化
   formatMarkdown(text) {
-    // 处理标题 (h1-h6)
-    text = text.replace(/^(#{1,6})\s+(.*)$/gm, (match, hashes, content) => {
-      const hLevel = hashes.length;
-      if (hLevel >= 1 && hLevel <= 6) {
-        return `<h${hLevel} style="font-size: ${28 - (hLevel - 1) * 2}px; font-weight: bold; margin: 6px 0;">${content}</h${hLevel}>`;
-      }
-      return match;
-    });
+    if (!text) return '';
     
-    // 处理加粗
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // 处理斜体
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // 处理无序列表
-    let hasUnorderedList = text.match(/^\s*-\s+(.*)$/gm);
-    if (hasUnorderedList) {
-      // 先给每个列表项添加标记，以便后续处理
-      text = text.replace(/^\s*-\s+(.*)$/gm, '<!--ULSTART--><li style="margin: 2px 0;">$1</li><!--ULEND-->');
+    try {
+      // 使用更简单的HTML格式，避免复杂的嵌套结构
       
-      // 将连续的列表项合并到一个ul中
-      text = text.replace(/(<!--ULSTART-->.*?<!--ULEND-->)+/g, (match) => {
-        return '<ul style="padding-left: 16px; margin: 4px 0;">' + 
-          match.replace(/<!--ULSTART-->|<!--ULEND-->/g, '') + 
-          '</ul>';
+      // 处理标题 (h1-h6)
+      text = text.replace(/^(#{1,6})\s+(.*)$/gm, (match, hashes, content) => {
+        const hLevel = hashes.length;
+        const fontSize = 28 - (hLevel - 1) * 2;
+        return `<div style="font-size:${fontSize}px;font-weight:bold;margin:8px 0;">${content}</div>`;
       });
-    }
-    
-    // 处理有序列表
-    let hasOrderedList = text.match(/^\s*\d+\.\s+(.*)$/gm);
-    if (hasOrderedList) {
-      // 先给每个列表项添加标记，以便后续处理
-      text = text.replace(/^\s*\d+\.\s+(.*)$/gm, '<!--OLSTART--><li style="margin: 2px 0;">$1</li><!--OLEND-->');
       
-      // 将连续的列表项合并到一个ol中
-      text = text.replace(/(<!--OLSTART-->.*?<!--OLEND-->)+/g, (match) => {
-        return '<ol style="padding-left: 16px; margin: 4px 0;">' + 
-          match.replace(/<!--OLSTART-->|<!--OLEND-->/g, '') + 
-          '</ol>';
+      // 处理加粗
+      text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      
+      // 处理斜体
+      text = text.replace(/\*(.*?)\*/g, '<i>$1</i>');
+      
+      // 处理无序列表
+      text = text.replace(/^\s*-\s+(.*)$/gm, '<div style="margin-left:16px;">• $1</div>');
+      
+      // 处理有序列表
+      let listIndex = 0;
+      text = text.replace(/^\s*\d+\.\s+(.*)$/gm, (match) => {
+        listIndex++;
+        return match.replace(/^\s*\d+\.\s+(.*)$/, `<div style="margin-left:16px;">${listIndex}. $1</div>`);
       });
+      
+      // 处理引用
+      text = text.replace(/^\>\s+(.*)$/gm, '<div style="border-left:3px solid #ccc;padding-left:8px;color:#666;margin:4px 0;">$1</div>');
+      
+      // 处理代码块
+      text = text.replace(/```([\s\S]*?)```/g, '<div style="background-color:#f5f5f5;padding:8px;border-radius:4px;font-family:monospace;white-space:pre-wrap;margin:8px 0;font-size:12px;">$1</div>');
+      
+      // 处理行内代码
+      text = text.replace(/`([^`]+)`/g, '<span style="background-color:#f5f5f5;padding:2px 4px;border-radius:3px;font-family:monospace;font-size:12px;">$1</span>');
+      
+      // 处理水平线
+      text = text.replace(/^---+$/gm, '<div style="border-top:1px solid #eee;margin:8px 0;"></div>');
+      
+      // 处理链接
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a style="color:#0366d6;" href="$2">$1</a>');
+      
+      // 处理段落
+      text = text.replace(/\n\n/g, '<div style="margin:8px 0;"></div>');
+      
+      // 处理换行
+      text = text.replace(/\n/g, '<br>');
+      
+      // 添加调试信息
+      console.log('格式化后的内容长度:', text.length);
+      
+      return text;
+    } catch (error) {
+      console.error('Markdown格式化错误:', error);
+      // 如果格式化失败，返回纯文本
+      return text.replace(/\n/g, '<br>');
     }
-    
-    // 处理引用
-    text = text.replace(/^\>\s+(.*)$/gm, '<blockquote style="border-left: 3px solid #ccc; padding-left: 8px; margin: 4px 0; color: #666;">$1</blockquote>');
-    
-    // 处理代码块
-    text = text.replace(/```(.*?)```/gs, '<pre style="background-color: #f5f5f5; padding: 8px; border-radius: 4px; margin: 4px 0; overflow-x: auto; font-size: 12px;">$1</pre>');
-    
-    // 处理行内代码
-    text = text.replace(/`([^`]+)`/g, '<code style="background-color: #f5f5f5; padding: 1px 3px; border-radius: 3px; font-size: 12px;">$1</code>');
-    
-    // 处理水平线
-    text = text.replace(/^---+$/gm, '<hr style="border: none; border-top: 1px solid #eee; margin: 8px 0;">');
-    
-    // 处理链接
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a style="color: #0366d6; text-decoration: none;" href="$2">$1</a>');
-    
-    // 处理段落
-    text = text.replace(/\n\n/g, '<br style="margin: 4px 0;"/>');
-    
-    // 处理换行
-    text = text.replace(/\n/g, '<br style="margin: 2px 0;"/>');
-    
-    return text;
   },
 
   // 将文本分成小块以模拟流式输出
@@ -464,22 +369,36 @@ Page({
     setTimeout(() => {
       wx.createSelectorQuery()
         .select('#message-container')
-        .boundingClientRect(rect => {
-          if (rect) {
-            this.setData({
-              scrollTop: rect.height
-            })
+        .node()
+        .exec(res => {
+          if (res && res[0] && res[0].node) {
+            const scrollView = res[0].node;
+            scrollView.scrollIntoView({
+              selector: '.message-item:last-child',
+              animated: true
+            });
+          } else {
+            // 兼容旧方法
+            wx.createSelectorQuery()
+              .select('#message-container')
+              .boundingClientRect(rect => {
+                if (rect) {
+                  this.setData({
+                    scrollTop: 100000 // 使用一个足够大的值确保滚动到底部
+                  });
+                }
+              })
+              .exec();
           }
-        })
-        .exec()
-    }, 100)
+        });
+    }, 100);
   },
 
   // 清空聊天记录
   clearChat() {
     wx.showModal({
       title: '提示',
-      content: '确定要清空聊天记录吗？',
+      content: '确定要清空所有聊天记录吗？',
       success: (res) => {
         if (res.confirm) {
           this.setData({
@@ -490,12 +409,108 @@ Page({
       }
     })
   },
-  
-  // 跳转到健康档案页面
-  navigateToRecords() {
-    wx.switchTab({
-      url: '/pages/records/records'
+
+  // 获取天气信息（模拟数据，实际应用中应该调用天气API）
+  getWeatherInfo() {
+    // 模拟天气数据
+    const weatherTypes = [
+      { icon: '/images/weather/sunny.png', description: '晴朗', temperature: '25' },
+      { icon: '/images/weather/cloudy.png', description: '多云', temperature: '22' },
+      { icon: '/images/weather/rainy.png', description: '小雨', temperature: '18' },
+      { icon: '/images/weather/snowy.png', description: '小雪', temperature: '0' },
+      { icon: '/images/weather/windy.png', description: '有风', temperature: '20' }
+    ]
+    
+    // 随机选择一种天气（实际应用中应该根据用户位置获取真实天气）
+    const randomIndex = Math.floor(Math.random() * weatherTypes.length)
+    const weather = weatherTypes[randomIndex]
+    
+    this.setData({
+      weatherInfo: weather
     })
-    Logger.debug('用户跳转到健康档案页面')
+    
+    // 注意：实际应用中，应该获取用户位置，然后调用天气API获取真实天气数据
+    // wx.getLocation({
+    //   success: (res) => {
+    //     // 调用天气API获取天气数据
+    //   }
+    // })
+  },
+  
+  // 获取节气信息（简化版，实际应用中应该使用更精确的计算方法）
+  getSolarTermInfo() {
+    const today = new Date()
+    const month = today.getMonth() + 1 // 月份从0开始，需要+1
+    const day = today.getDate()
+    
+    let solarTerm = ''
+    
+    // 简化的节气判断（实际应用中应该使用更精确的计算方法）
+    if ((month === 2 && day >= 3 && day <= 5) || (month === 2 && day === 6 && today.getHours() < 12)) {
+      solarTerm = '立春'
+    } else if ((month === 2 && day >= 18 && day <= 20) || (month === 2 && day === 21 && today.getHours() < 12)) {
+      solarTerm = '雨水'
+    } else if ((month === 3 && day >= 5 && day <= 7) || (month === 3 && day === 8 && today.getHours() < 12)) {
+      solarTerm = '惊蛰'
+    } else if ((month === 3 && day >= 20 && day <= 22) || (month === 3 && day === 23 && today.getHours() < 12)) {
+      solarTerm = '春分'
+    } else if ((month === 4 && day >= 4 && day <= 6) || (month === 4 && day === 7 && today.getHours() < 12)) {
+      solarTerm = '清明'
+    } else if ((month === 4 && day >= 19 && day <= 21) || (month === 4 && day === 22 && today.getHours() < 12)) {
+      solarTerm = '谷雨'
+    } else if ((month === 5 && day >= 5 && day <= 7) || (month === 5 && day === 8 && today.getHours() < 12)) {
+      solarTerm = '立夏'
+    } else if ((month === 5 && day >= 20 && day <= 22) || (month === 5 && day === 23 && today.getHours() < 12)) {
+      solarTerm = '小满'
+    } else if ((month === 6 && day >= 5 && day <= 7) || (month === 6 && day === 8 && today.getHours() < 12)) {
+      solarTerm = '芒种'
+    } else if ((month === 6 && day >= 21 && day <= 23) || (month === 6 && day === 24 && today.getHours() < 12)) {
+      solarTerm = '夏至'
+    } else if ((month === 7 && day >= 6 && day <= 8) || (month === 7 && day === 9 && today.getHours() < 12)) {
+      solarTerm = '小暑'
+    } else if ((month === 7 && day >= 22 && day <= 24) || (month === 7 && day === 25 && today.getHours() < 12)) {
+      solarTerm = '大暑'
+    } else if ((month === 8 && day >= 7 && day <= 9) || (month === 8 && day === 10 && today.getHours() < 12)) {
+      solarTerm = '立秋'
+    } else if ((month === 8 && day >= 22 && day <= 24) || (month === 8 && day === 25 && today.getHours() < 12)) {
+      solarTerm = '处暑'
+    } else if ((month === 9 && day >= 7 && day <= 9) || (month === 9 && day === 10 && today.getHours() < 12)) {
+      solarTerm = '白露'
+    } else if ((month === 9 && day >= 22 && day <= 24) || (month === 9 && day === 25 && today.getHours() < 12)) {
+      solarTerm = '秋分'
+    } else if ((month === 10 && day >= 8 && day <= 10) || (month === 10 && day === 11 && today.getHours() < 12)) {
+      solarTerm = '寒露'
+    } else if ((month === 10 && day >= 23 && day <= 25) || (month === 10 && day === 26 && today.getHours() < 12)) {
+      solarTerm = '霜降'
+    } else if ((month === 11 && day >= 7 && day <= 9) || (month === 11 && day === 10 && today.getHours() < 12)) {
+      solarTerm = '立冬'
+    } else if ((month === 11 && day >= 22 && day <= 24) || (month === 11 && day === 25 && today.getHours() < 12)) {
+      solarTerm = '小雪'
+    } else if ((month === 12 && day >= 6 && day <= 8) || (month === 12 && day === 9 && today.getHours() < 12)) {
+      solarTerm = '大雪'
+    } else if ((month === 12 && day >= 21 && day <= 23) || (month === 12 && day === 24 && today.getHours() < 12)) {
+      solarTerm = '冬至'
+    } else if ((month === 1 && day >= 5 && day <= 7) || (month === 1 && day === 8 && today.getHours() < 12)) {
+      solarTerm = '小寒'
+    } else if ((month === 1 && day >= 20 && day <= 22) || (month === 1 && day === 23 && today.getHours() < 12)) {
+      solarTerm = '大寒'
+    } else {
+      // 如果不在节气日期范围内，显示最近的节气
+      if (month === 1 && day < 5) {
+        solarTerm = '冬至后'
+      } else if (month === 1 && day > 22) {
+        solarTerm = '大寒后'
+      } else if (month === 2 && day < 3) {
+        solarTerm = '大寒后'
+      } else if (month === 2 && day > 20) {
+        solarTerm = '雨水后'
+      } else {
+        solarTerm = '节气间'
+      }
+    }
+    
+    this.setData({
+      solarTermInfo: solarTerm
+    })
   }
 }) 

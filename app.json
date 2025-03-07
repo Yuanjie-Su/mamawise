@@ -2,12 +2,15 @@
   "pages": [
     "pages/chat/chat",
     "pages/records/records",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/settings/settings",
+    "pages/policy/privacy",
+    "pages/policy/agreement"
   ],
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#F8E1E7",
-    "navigationBarTitleText": "妈妈智慧",
+    "navigationBarTitleText": "孕期AI助手",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {

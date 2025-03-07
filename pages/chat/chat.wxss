@@ -5,6 +5,7 @@
   height: 100vh;
   padding: 0;
   background-color: #F8F8F8;
+  position: relative;
 }
 
 .chat-header {
@@ -45,24 +46,27 @@
 }
 
 .message-list {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 20rpx 30rpx;
   overflow-y: auto;
+  flex: 1;
+  padding-bottom: 120rpx; /* 为底部输入框留出空间 */
 }
 
 /* 推荐问题样式 */
 .recommended-questions {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 40rpx 0;
+  align-items: left;
   margin-bottom: 20rpx;
 }
 
 .recommended-title {
   font-size: 30rpx;
   color: var(--text-light);
-  margin-bottom: 30rpx;
+  margin-top: 10rpx;
+  margin-bottom: 10rpx;
 }
 
 .recommended-question {
@@ -70,10 +74,11 @@
   color: var(--primary-color);
   padding: 20rpx 30rpx;
   border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  margin-bottom: 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-  width: 90%;
-  text-align: center;
+  width: fit-content;
+  max-width: 100%;
+  text-align: left;
   font-size: 28rpx;
   border: 1rpx solid var(--primary-light);
 }
@@ -81,37 +86,27 @@
 .message-item {
   display: flex;
   flex-direction: column;
-  margin-bottom: 20rpx;
+  margin-bottom: 10rpx;
   position: relative;
-  max-width: 85%;
+  max-width: 90%;
 }
 
 .system-message {
   align-self: flex-start;
+  align-items: flex-start;
 }
 
 .user-message {
   align-self: flex-end;
-}
-
-.avatar-container {
-  width: 80rpx;
-  height: 80rpx;
-  flex-shrink: 0;
-}
-
-.avatar {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  background-color: #FFFFFF;
+  align-items: flex-end;
 }
 
 .message-content {
   padding: 20rpx;
   border-radius: 10rpx;
   word-wrap: break-word;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .system-content {
@@ -119,12 +114,16 @@
   color: var(--text-color);
   border-top-left-radius: 0;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  text-align: left;
+  align-self: flex-start;
 }
 
 .user-content {
   background-color: var(--primary-color);
   color: #FFFFFF;
   border-top-right-radius: 0;
+  text-align: left;
+  align-self: flex-end;
 }
 
 .loading-container {
@@ -169,6 +168,11 @@
   padding: 20rpx 30rpx;
   background-color: #FFFFFF;
   border-top: 1rpx solid var(--border-color);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 
 .input-container {
@@ -187,16 +191,30 @@
 }
 
 .send-btn {
-  width: 100rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  text-align: center;
-  border-radius: 30rpx;
-  font-size: 28rpx;
-  color: #CCCCCC;
+  width: 60rpx; /* 调整宽度 */
+  height: 60rpx; /* 调整高度 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20rpx; /* 圆形按钮 */
+  background-color: transparent; /* 默认背景透明 */
 }
 
-.send-btn.active {
-  background-color: var(--primary-color);
-  color: #FFFFFF;
-} 
+.send-icon {
+  width: 48rpx; /* 图标宽度 */
+  height: 48rpx; /* 图标高度 */
+}
+
+.fallback-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 28rpx;
+  line-height: 1.5;
+}

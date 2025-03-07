@@ -7,10 +7,43 @@
       <view class="user-details">
         <text class="username" wx:if="{{hasUserInfo}}">{{userInfo.nickName}}</text>
         <text class="username" wx:else>未登录</text>
-        <text class="user-desc">孕24周 | 预产期: 2024-12-15</text>
+        <text class="user-desc" wx:if="{{hasPersonalInfo}}">孕{{personalInfo.pregnancyWeek}}周 | 预产期: {{personalInfo.dueDate}}</text>
+        <text class="user-desc" wx:elif="{{hasUserInfo}}">点击完善个人信息</text>
+        <text class="user-desc" wx:else>登录后可使用更多功能</text>
       </view>
     </view>
     <button wx:if="{{!hasUserInfo && canIUseGetUserProfile}}" class="login-btn" bindtap="getUserProfile">登录</button>
+    <button wx:elif="{{hasUserInfo && !hasPersonalInfo}}" class="info-btn" bindtap="showPersonalInfoForm">完善信息</button>
+    <button wx:elif="{{hasUserInfo && hasPersonalInfo}}" class="edit-btn" bindtap="showPersonalInfoForm">修改信息</button>
+    <button wx:elif="{{hasUserInfo}}" class="logout-btn" bindtap="logout">退出登录</button>
+  </view>
+  
+  <!-- 日历卡片 -->
+  <view class="calendar-card">
+    <view class="calendar-content">
+      <view class="calendar-header">
+        <view class="calendar-date">
+          <view class="calendar-day">{{calendarData.day}}</view>
+          <view class="calendar-info">
+            <view class="calendar-year-month">{{calendarData.year}}年{{calendarData.month}}月</view>
+            <view class="calendar-weekday">星期{{calendarData.weekday}}</view>
+          </view>
+        </view>
+        <view class="weather-solar-info">
+          <view class="weather-info">
+            <image class="weather-icon" src="{{weatherInfo.icon}}"></image>
+            <view class="weather-details">
+              <text class="weather-desc">{{weatherInfo.description}}</text>
+              <text class="weather-temp">{{weatherInfo.temperature}}°C</text>
+            </view>
+          </view>
+          <view class="solar-term-info">
+            <text class="solar-term-label">节气</text>
+            <text class="solar-term-value">{{solarTermInfo}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
   
   <!-- 快捷操作 -->
@@ -36,14 +69,113 @@
     </view>
   </view>
   
-  <!-- 关于我们 -->
-  <view class="about-section" bindtap="showAbout">
-    <text>关于妈妈智慧</text>
+  <!-- 产检记录展示区域 -->
+  <view class="checkup-records-section" wx:if="{{hasPersonalInfo && personalInfo.checkupRecords && personalInfo.checkupRecords.length > 0}}">
+    <view class="section-header">
+      <text class="section-title">历史产检记录</text>
+      <view class="section-action" bindtap="uploadCheckupRecord">添加</view>
+    </view>
+    <view class="checkup-records-list">
+      <view class="checkup-record-item" wx:for="{{personalInfo.checkupRecords}}" wx:key="index">
+        <image class="record-thumbnail" src="{{item.imageUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.imageUrl}}"></image>
+        <view class="record-info">
+          <text class="record-date">{{item.date || '未知日期'}}</text>
+          <view class="record-actions">
+            <text class="delete-btn" bindtap="deleteCheckupRecord" data-index="{{index}}">删除</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 产检记录分析结果 -->
+    <view class="record-analysis" wx:if="{{personalInfo.checkupAnalysis}}">
+      <view class="analysis-title">产检记录分析</view>
+      <view class="analysis-content">{{personalInfo.checkupAnalysis}}</view>
+    </view>
   </view>
   
   <!-- 版本信息 -->
   <view class="version-info">
     <text>版本 1.0.0</text>
+  </view>
+  
+  <!-- 个人信息表单弹窗 -->
+  <view class="personal-info-form" wx:if="{{showPersonalInfoForm}}">
+    <view class="form-overlay" bindtap="hidePersonalInfoForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">{{formTitle || '完善个人信息'}}</text>
+        <view class="close-btn" bindtap="hidePersonalInfoForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">年龄</text>
+          <picker mode="selector" range="{{ageRange}}" value="{{ageIndex}}" bindchange="onPickerChange" data-field="age">
+            <view class="picker-view">
+              <text wx:if="{{formData.age}}">{{formData.age}}岁</text>
+              <text wx:else class="placeholder">请选择年龄</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">孕周 *</text>
+          <picker mode="selector" range="{{pregnancyWeekRange}}" value="{{pregnancyWeekIndex}}" bindchange="onPickerChange" data-field="pregnancyWeek">
+            <view class="picker-view">
+              <text wx:if="{{formData.pregnancyWeek}}">{{formData.pregnancyWeek}}周</text>
+              <text wx:else class="placeholder">请选择当前孕周</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">预产期 *</text>
+          <picker mode="date" value="{{formData.dueDate}}" start="2024-01-01" end="2025-12-31" bindchange="onInputChange" data-field="dueDate">
+            <view class="picker-view">
+              <text wx:if="{{formData.dueDate}}">{{formData.dueDate}}</text>
+              <text wx:else class="placeholder">请选择预产期</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">身高(cm)</text>
+          <picker mode="selector" range="{{heightRange}}" value="{{heightIndex}}" bindchange="onPickerChange" data-field="height">
+            <view class="picker-view">
+              <text wx:if="{{formData.height}}">{{formData.height}}cm</text>
+              <text wx:else class="placeholder">请选择身高</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">孕前体重(kg)</text>
+          <picker mode="selector" range="{{weightRange}}" value="{{weightIndex}}" bindchange="onPickerChange" data-field="weight">
+            <view class="picker-view">
+              <text wx:if="{{formData.prePregnancyWeight}}">{{formData.prePregnancyWeight}}kg</text>
+              <text wx:else class="placeholder">请选择孕前体重</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">末次产检时间</text>
+          <picker mode="date" value="{{formData.lastCheckupDate}}" start="2023-01-01" end="{{today}}" bindchange="onInputChange" data-field="lastCheckupDate">
+            <view class="picker-view">
+              <text wx:if="{{formData.lastCheckupDate}}">{{formData.lastCheckupDate}}</text>
+              <text wx:else class="placeholder">请选择末次产检时间</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">过敏信息</text>
+          <input class="form-input" placeholder="请输入过敏信息，多个请用逗号分隔" value="{{formData.allergies}}" bindinput="onInputChange" data-field="allergies" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">饮食偏好</text>
+          <input class="form-input" placeholder="请输入饮食偏好，多个请用逗号分隔" value="{{formData.dietPreferences}}" bindinput="onInputChange" data-field="dietPreferences" />
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hidePersonalInfoForm">取消</button>
+        <button class="submit-btn" bindtap="submitPersonalInfo">保存</button>
+      </view>
+    </view>
   </view>
   
   <!-- 开发者工具面板 -->
@@ -117,7 +249,15 @@
             <text class="debug-value">{{systemInfo.platform}}</text>
           </view>
           <view class="debug-item">
-            <text class="debug-label">系统版本:</text>
+            <text class="debug-label">品牌:</text>
+            <text class="debug-value">{{systemInfo.brand}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">型号:</text>
+            <text class="debug-value">{{systemInfo.model}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">系统:</text>
             <text class="debug-value">{{systemInfo.system}}</text>
           </view>
           <view class="debug-item">
@@ -125,8 +265,28 @@
             <text class="debug-value">{{systemInfo.version}}</text>
           </view>
           <view class="debug-item">
-            <text class="debug-label">SDKVersion:</text>
+            <text class="debug-label">基础库版本:</text>
             <text class="debug-value">{{systemInfo.SDKVersion}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">屏幕宽度:</text>
+            <text class="debug-value">{{systemInfo.screenWidth}}px</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">屏幕高度:</text>
+            <text class="debug-value">{{systemInfo.screenHeight}}px</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">窗口宽度:</text>
+            <text class="debug-value">{{systemInfo.windowWidth}}px</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">窗口高度:</text>
+            <text class="debug-value">{{systemInfo.windowHeight}}px</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">像素比:</text>
+            <text class="debug-value">{{systemInfo.pixelRatio}}</text>
           </view>
         </view>
         
@@ -138,7 +298,15 @@
           </view>
           <view class="debug-item">
             <text class="debug-label">内存占用:</text>
-            <text class="debug-value">{{appInfo.memory}} MB</text>
+            <text class="debug-value">{{appInfo.memory}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">主题:</text>
+            <text class="debug-value">{{systemInfo.theme || '未知'}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">语言:</text>
+            <text class="debug-value">{{systemInfo.language}}</text>
           </view>
         </view>
       </view>
