@@ -1,0 +1,95 @@
+/**app.wxss**/
+page {
+  --primary-color: #E57B9E;
+  --primary-light: #F8E1E7;
+  --secondary-color: #7BBFE5;
+  --secondary-light: #E1EFF8;
+  --text-color: #333333;
+  --text-light: #999999;
+  --background-color: #FFFFFF;
+  --border-color: #EEEEEE;
+  
+  height: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 30rpx;
+}
+
+.card {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 40rpx;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 40rpx;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 40rpx;
+}
+
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-secondary {
+  color: var(--secondary-color);
+}
+
+.text-light {
+  color: var(--text-light);
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-color);
+  width: 100%;
+  margin: 20rpx 0;
+} 

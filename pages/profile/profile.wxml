@@ -1,0 +1,147 @@
+<!--pages/profile/profile.wxml-->
+<view class="container profile-container">
+  <!-- 用户信息卡片 -->
+  <view class="user-card">
+    <view class="user-info">
+      <image class="user-avatar" src="{{hasUserInfo ? userInfo.avatarUrl : '/images/default_avatar.png'}}"></image>
+      <view class="user-details">
+        <text class="username" wx:if="{{hasUserInfo}}">{{userInfo.nickName}}</text>
+        <text class="username" wx:else>未登录</text>
+        <text class="user-desc">孕24周 | 预产期: 2024-12-15</text>
+      </view>
+    </view>
+    <button wx:if="{{!hasUserInfo && canIUseGetUserProfile}}" class="login-btn" bindtap="getUserProfile">登录</button>
+  </view>
+  
+  <!-- 快捷操作 -->
+  <view class="quick-actions">
+    <view class="action-button" bindtap="navigateToChat">
+      <image src="/images/chat.png" class="action-icon"></image>
+      <text>AI咨询</text>
+    </view>
+    <view class="action-button" bindtap="navigateToRecords">
+      <image src="/images/records.png" class="action-icon"></image>
+      <text>健康档案</text>
+    </view>
+  </view>
+  
+  <!-- 菜单列表 -->
+  <view class="menu-list">
+    <view class="menu-item" wx:for="{{menuList}}" wx:key="id" bindtap="navigateTo" data-item="{{item}}">
+      <view class="menu-icon-container">
+        <image class="menu-icon" src="{{item.icon}}"></image>
+      </view>
+      <text class="menu-name">{{item.name}}</text>
+      <view class="arrow">></view>
+    </view>
+  </view>
+  
+  <!-- 关于我们 -->
+  <view class="about-section" bindtap="showAbout">
+    <text>关于妈妈智慧</text>
+  </view>
+  
+  <!-- 版本信息 -->
+  <view class="version-info">
+    <text>版本 1.0.0</text>
+  </view>
+  
+  <!-- 开发者工具面板 -->
+  <view class="dev-panel" wx:if="{{showDevPanel}}">
+    <view class="dev-panel-header">
+      <text class="dev-panel-title">开发者工具</text>
+      <view class="dev-panel-actions">
+        <view class="dev-action-btn close-btn" bindtap="closeDevPanel">关闭</view>
+      </view>
+    </view>
+    
+    <view class="dev-tabs">
+      <view 
+        class="dev-tab-item {{activeDevTab === 'logs' ? 'active' : ''}}" 
+        bindtap="switchDevTab"
+        data-tab="logs">
+        日志
+      </view>
+      <view 
+        class="dev-tab-item {{activeDevTab === 'debug' ? 'active' : ''}}" 
+        bindtap="switchDevTab"
+        data-tab="debug">
+        调试
+      </view>
+    </view>
+    
+    <!-- 日志标签页 -->
+    <view class="dev-tab-content" wx:if="{{activeDevTab === 'logs'}}">
+      <view class="log-actions">
+        <view class="log-action-btn" bindtap="exportLogs">导出</view>
+        <view class="log-action-btn" bindtap="clearLogs">清空</view>
+        <view class="log-action-btn" bindtap="loadLogs">刷新</view>
+      </view>
+      
+      <view class="log-filter">
+        <view 
+          class="log-filter-item {{logFilter === level ? 'active' : ''}}" 
+          wx:for="{{logLevels}}" 
+          wx:key="*this" 
+          wx:for-item="level"
+          bindtap="filterLogs"
+          data-level="{{level}}">
+          {{level}}
+        </view>
+      </view>
+      
+      <scroll-view class="log-list" scroll-y="true">
+        <view wx:if="{{logs.length === 0}}" class="empty-logs">
+          暂无日志记录
+        </view>
+        <view wx:for="{{logs}}" wx:key="index" class="log-item log-level-{{item.level}}">
+          <view class="log-header">
+            <text class="log-level">{{item.level}}</text>
+            <text class="log-time">{{item.timestamp}}</text>
+          </view>
+          <view class="log-message">{{item.message}}</view>
+          <view class="log-data" wx:if="{{item.data}}">
+            {{item.data}}
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+    
+    <!-- 调试标签页 -->
+    <view class="dev-tab-content" wx:if="{{activeDevTab === 'debug'}}">
+      <view class="debug-info">
+        <view class="debug-section">
+          <view class="debug-title">系统信息</view>
+          <view class="debug-item">
+            <text class="debug-label">平台:</text>
+            <text class="debug-value">{{systemInfo.platform}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">系统版本:</text>
+            <text class="debug-value">{{systemInfo.system}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">微信版本:</text>
+            <text class="debug-value">{{systemInfo.version}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">SDKVersion:</text>
+            <text class="debug-value">{{systemInfo.SDKVersion}}</text>
+          </view>
+        </view>
+        
+        <view class="debug-section">
+          <view class="debug-title">应用信息</view>
+          <view class="debug-item">
+            <text class="debug-label">启动时间:</text>
+            <text class="debug-value">{{appInfo.launchTime}}</text>
+          </view>
+          <view class="debug-item">
+            <text class="debug-label">内存占用:</text>
+            <text class="debug-value">{{appInfo.memory}} MB</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view> 

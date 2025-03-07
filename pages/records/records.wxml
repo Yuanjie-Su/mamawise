@@ -1,0 +1,170 @@
+<!--pages/records/records.wxml-->
+<view class="container records-container">
+  <view class="records-header">
+    <view class="title">健康档案</view>
+    <view class="header-actions">
+      <view class="chat-btn" bindtap="navigateToChat">咨询</view>
+      <view class="add-btn" bindtap="addNewRecord">添加记录</view>
+    </view>
+  </view>
+  
+  <!-- 标签页导航 -->
+  <view class="tabs">
+    <view 
+      wx:for="{{tabs}}" 
+      wx:key="index" 
+      class="tab-item {{activeTab === index ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-index="{{index}}">
+      {{item}}
+    </view>
+  </view>
+  
+  <!-- 标签页内容 -->
+  <view class="tab-content">
+    <!-- 基本信息 -->
+    <view class="tab-pane" hidden="{{activeTab !== 0}}">
+      <view class="info-card">
+        <view class="card-title">孕期信息</view>
+        <view class="info-item">
+          <text class="info-label">当前孕周</text>
+          <text class="info-value">{{pregnancyInfo.week}}周</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">预产期</text>
+          <text class="info-value">{{pregnancyInfo.dueDate}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">末次产检</text>
+          <text class="info-value">{{pregnancyInfo.lastCheckup}}</text>
+        </view>
+      </view>
+      
+      <view class="info-card">
+        <view class="card-title">过敏信息</view>
+        <view class="allergy-list">
+          <view class="allergy-item" wx:for="{{healthRecords.allergies}}" wx:key="index">
+            {{item}}
+          </view>
+          <view class="empty-tip" wx:if="{{!healthRecords.allergies || healthRecords.allergies.length === 0}}">
+            暂无过敏信息
+          </view>
+        </view>
+      </view>
+      
+      <view class="info-card">
+        <view class="card-title">医生备注</view>
+        <view class="notes-list">
+          <view class="note-item" wx:for="{{notes}}" wx:key="date">
+            <view class="note-date">{{item.date}}</view>
+            <view class="note-content">{{item.content}}</view>
+          </view>
+          <view class="empty-tip" wx:if="{{!notes || notes.length === 0}}">
+            暂无医生备注
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 体征记录 -->
+    <view class="tab-pane" hidden="{{activeTab !== 1}}">
+      <view class="vitals-section">
+        <view class="section-header">
+          <text>血压记录</text>
+        </view>
+        <view class="vitals-list">
+          <view class="vitals-item" wx:for="{{vitalsRecords.bloodPressure}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
+            <view class="vitals-date">{{item.date}}</view>
+            <view class="vitals-value">{{item.value}} mmHg</view>
+            <view class="arrow">></view>
+          </view>
+          <view class="empty-tip" wx:if="{{!vitalsRecords.bloodPressure || vitalsRecords.bloodPressure.length === 0}}">
+            暂无血压记录
+          </view>
+        </view>
+      </view>
+      
+      <view class="vitals-section">
+        <view class="section-header">
+          <text>体重记录</text>
+        </view>
+        <view class="vitals-list">
+          <view class="vitals-item" wx:for="{{vitalsRecords.weight}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
+            <view class="vitals-date">{{item.date}}</view>
+            <view class="vitals-value">{{item.value}} kg</view>
+            <view class="arrow">></view>
+          </view>
+          <view class="empty-tip" wx:if="{{!vitalsRecords.weight || vitalsRecords.weight.length === 0}}">
+            暂无体重记录
+          </view>
+        </view>
+      </view>
+      
+      <view class="vitals-section">
+        <view class="section-header">
+          <text>血糖记录</text>
+        </view>
+        <view class="vitals-list">
+          <view class="vitals-item" wx:for="{{vitalsRecords.bloodSugar}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
+            <view class="vitals-date">{{item.date}}</view>
+            <view class="vitals-value">{{item.value}} mmol/L</view>
+            <view class="arrow">></view>
+          </view>
+          <view class="empty-tip" wx:if="{{!vitalsRecords.bloodSugar || vitalsRecords.bloodSugar.length === 0}}">
+            暂无血糖记录
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 用药记录 -->
+    <view class="tab-pane" hidden="{{activeTab !== 2}}">
+      <view class="medication-list">
+        <view class="medication-item" wx:for="{{medications}}" wx:key="name">
+          <view class="medication-info">
+            <view class="medication-name">{{item.name}}</view>
+            <view class="medication-details">
+              <text>剂量: {{item.dosage}}</text>
+              <text>频率: {{item.frequency}}</text>
+            </view>
+          </view>
+          <view class="medication-actions">
+            <view class="edit-btn">编辑</view>
+          </view>
+        </view>
+        <view class="empty-tip" wx:if="{{!medications || medications.length === 0}}">
+          暂无用药记录
+        </view>
+      </view>
+    </view>
+    
+    <!-- 产检记录 -->
+    <view class="tab-pane" hidden="{{activeTab !== 3}}">
+      <view class="checkup-list">
+        <view class="checkup-item" wx:for="{{checkupRecords}}" wx:key="date">
+          <view class="checkup-header">
+            <view class="checkup-date">{{item.date}}</view>
+            <view class="checkup-week">孕{{item.week}}周</view>
+          </view>
+          <view class="checkup-body">
+            <view class="checkup-hospital">{{item.hospital}}</view>
+            <view class="checkup-doctor">医生: {{item.doctor}}</view>
+            <view class="checkup-items">
+              <view class="checkup-item-row" wx:for="{{item.items}}" wx:for-item="checkItem" wx:key="name">
+                <text class="item-name">{{checkItem.name}}:</text>
+                <text class="item-value">{{checkItem.value}}</text>
+              </view>
+            </view>
+            <view class="checkup-notes">
+              <text class="notes-label">医嘱:</text>
+              <text class="notes-content">{{item.notes}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="empty-tip" wx:if="{{!checkupRecords || checkupRecords.length === 0}}">
+          暂无产检记录
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

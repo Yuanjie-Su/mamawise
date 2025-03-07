@@ -1,0 +1,68 @@
+<!--pages/chat/chat.wxml-->
+<view class="container chat-container">
+  <view class="chat-header">
+    <view class="title">AI孕期顾问</view>
+    <view class="header-actions">
+      <view class="records-btn" bindtap="navigateToRecords">健康档案</view>
+      <view class="clear-btn" bindtap="clearChat">清空</view>
+    </view>
+  </view>
+  
+  <scroll-view 
+    scroll-y="true" 
+    class="message-list" 
+    scroll-top="{{scrollTop}}"
+    id="message-container"
+    enhanced="true"
+    show-scrollbar="false"
+    scroll-anchoring="true">
+    
+    <!-- 推荐问题区域，仅在没有消息时显示 -->
+    <view class="recommended-questions" wx:if="{{messages.length === 0}}">
+      <view class="recommended-title">您可能想问：</view>
+      <view 
+        class="recommended-question" 
+        wx:for="{{recommendedQuestions}}" 
+        wx:key="*this" 
+        bindtap="onRecommendedQuestion" 
+        data-question="{{item}}">
+        {{item}}
+      </view>
+    </view>
+    
+    <block wx:for="{{messages}}" wx:key="id">
+      <!-- 系统消息（AI回复）或用户消息 -->
+      <view class="message-item {{item.type === 'system' ? 'system-message' : 'user-message'}}" id="message-{{item.id}}">
+        <view class="message-content {{item.type === 'system' ? 'system-content' : 'user-content'}}">
+          <rich-text wx:if="{{item.type === 'system'}}" nodes="{{item.formattedContent}}"></rich-text>
+          <text wx:else>{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+    
+    <!-- 加载中提示 -->
+    <view class="loading-container" wx:if="{{isLoading}}">
+      <view class="loading-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+    </view>
+  </scroll-view>
+  
+  <view class="input-area">
+    <view class="input-container">
+      <input 
+        class="message-input" 
+        value="{{inputValue}}" 
+        bindinput="onInputChange"
+        placeholder="请输入您的问题..." 
+        confirm-type="send"
+        bindconfirm="sendMessage"
+        adjust-position="true"
+        cursor-spacing="20"
+      />
+      <view class="send-btn {{inputValue ? 'active' : ''}}" bindtap="sendMessage">发送</view>
+    </view>
+  </view>
+</view> 
