@@ -1,5 +1,23 @@
 const app = getApp()
 import Logger from '../../utils/logger'
+import { buildSystemPrompt } from '../../utils/systemPrompt'
+
+// 模型配置
+const MODEL_CONFIG = {
+  // DeepSeek模型
+  'DeepSeek-v3': {
+    id: 'DeepSeek-v3',
+    name: 'DeepSeek-v3',
+    apiModel: 'deepseek-v3',
+    description: 'DeepSeek基础大模型'
+  },
+  'DeepSeek-r1': {
+    id: 'DeepSeek-r1',
+    name: 'DeepSeek-r1',
+    apiModel: 'deepseek-r1',
+    description: 'DeepSeek增强版大模型'
+  }
+};
 
 Page({
   data: {
@@ -33,11 +51,22 @@ Page({
     },
     // 节气信息
     solarTermInfo: '',
+    // 当前使用的模型类型
+    currentModel: 'DeepSeek-v3',
+    // 当前模型的显示名称
+    currentModelName: 'DeepSeek-v3',
+    // 是否显示模型选择器
+    showModelSelector: false,
+    // 可用的模型类型列表
+    modelOptions: Object.values(MODEL_CONFIG)
   },
 
   onLoad() {
     // 记录页面加载
     Logger.info('聊天页面加载')
+    
+    // 初始化当前模型名称
+    this.initCurrentModelName()
     
     // 检查用户登录状态
     this.checkLoginStatus()
@@ -45,6 +74,12 @@ Page({
     // 获取天气和节气信息
     this.getWeatherInfo()
     this.getSolarTermInfo()
+    
+    // 检查当前选择的模型是否有效
+    this.validateCurrentModel()
+    
+    // 从本地存储中恢复上次使用的模型（如果有）
+    this.restoreLastUsedModel()
   },
   
   onShow() {
@@ -54,6 +89,21 @@ Page({
     // 获取天气和节气信息
     this.getWeatherInfo()
     this.getSolarTermInfo()
+  },
+  
+  // 初始化当前模型名称
+  initCurrentModelName() {
+    try {
+      const { currentModel, modelOptions } = this.data
+      if (modelOptions && modelOptions.length > 0) {
+        const modelConfig = modelOptions.find(option => option.id === currentModel)
+        if (modelConfig) {
+          this.setData({ currentModelName: modelConfig.name })
+        }
+      }
+    } catch (error) {
+      Logger.error('初始化当前模型名称时出错:', error)
+    }
   },
   
   // 检查用户登录状态和个人信息
@@ -150,43 +200,76 @@ Page({
         this.scrollToBottom()
       })
       
+      // 构建系统提示词
+      const systemPrompt = buildSystemPrompt({
+        isLoggedIn: this.data.isLoggedIn,
+        hasPersonalInfo: this.data.hasPersonalInfo,
+        healthRecords: this.data.healthRecords,
+        weatherInfo: this.data.weatherInfo,
+        solarTermInfo: this.data.solarTermInfo
+      })
+      
+      // 构建消息历史
+      const messageHistory = this.data.messages
+        .filter(msg => msg.id !== aiMessageId) // 排除刚刚添加的空消息
+        .map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }))
+      
+      // 添加系统提示词
+      messageHistory.unshift({
+        role: 'system',
+        content: systemPrompt
+      })
+      
+      // 获取当前选择的模型配置
+      const modelConfig = MODEL_CONFIG[this.data.currentModel];
+      
+      if (!modelConfig) {
+        // 如果找不到当前模型配置，使用第一个可用的模型
+        if (this.data.modelOptions.length > 0) {
+          const defaultModel = this.data.modelOptions[0];
+          Logger.warn(`未找到模型配置: ${this.data.currentModel}，使用默认模型: ${defaultModel.id}`);
+          this.setData({ 
+            currentModel: defaultModel.id,
+            currentModelName: defaultModel.name
+          });
+          modelConfig = MODEL_CONFIG[defaultModel.id];
+        } else {
+          throw new Error(`未找到模型配置，且模型选项列表为空`);
+        }
+      }
+      
+      // 调用AI模型生成回复
       try {
-        // 创建模型并获取流式响应
-        const model = wx.cloud.extend.AI.createModel("deepseek")
+        // 创建DeepSeek模型实例
+        const model = wx.cloud.extend.AI.createModel('deepseek');
+        
+        // 使用流式响应
         const res = await model.streamText({
           data: {
-            model: "deepseek-v3",
+            model: modelConfig.apiModel,
             messages: [
+              ...messageHistory,
               {
-                role: "system",
-                content: this.buildSystemPrompt()
-              },
-              {
-                role: "user",
+                role: 'user',
                 content: userQuery
               }
             ]
           }
         })
         
-        // 处理流式响应
+        // 处理DeepSeek模型的eventStream响应
         for await (let event of res.eventStream) {
           if (event.data === '[DONE]') break
-          
+
           const data = JSON.parse(event.data)
           const text = data?.choices?.[0]?.delta?.content
-          
+
           if (text) {
             // 更新消息内容
-            const updatedMessages = [...this.data.messages]
-            updatedMessages[updatedMessages.length - 1].content += text
-            
-            this.setData({
-              messages: updatedMessages
-            }, () => {
-              // 每次更新内容后滚动到底部
-              this.scrollToBottom()
-            })
+            this.updateMessageContent(text)
           }
         }
         
@@ -194,27 +277,31 @@ Page({
         this.setData({
           isLoading: false
         }, () => {
-          // 确保最后一次滚动到底部
+          // 滚动到底部
           this.scrollToBottom()
         })
       } catch (error) {
-        // 处理错误情况
-        this.setData({
-          isLoading: false
-        })
+        // 处理错误
+        Logger.error('生成AI回复时出错:', error)
         
-        // 添加错误消息
-        const errorMessage = {
-          id: this.data.messages.length + 1,
-          type: 'system',
-          content: '抱歉，AI回复生成失败，请稍后再试。',
-          formattedContent: '<p style="color: #ff4d4f;">抱歉，AI回复生成失败，请稍后再试。</p>'
+        // 更新错误消息
+        const errorMessage = '抱歉，生成回复时出现了错误，请稍后再试。'
+        const updatedMessages = [...this.data.messages]
+        
+        if (updatedMessages.length > 0) {
+          updatedMessages[updatedMessages.length - 1].content = errorMessage
         }
         
         this.setData({
-          messages: [...this.data.messages, errorMessage]
-        }, () => {
-          this.scrollToBottom()
+          messages: updatedMessages,
+          isLoading: false
+        })
+        
+        // 显示错误提示
+        wx.showToast({
+          title: '生成回复失败',
+          icon: 'none',
+          duration: 2000
         })
       }
     } catch (error) {
@@ -224,68 +311,17 @@ Page({
     }
   },
 
-  // 构建系统提示词
-  buildSystemPrompt() {
-    let systemPrompt = `你是一位专业的AI助手，名为"智慧助手"。你的任务是为用户提供准确、科学的健康建议和知识。
-请根据用户的问题，提供简洁明了的回答，避免过长的内容。
-回答应当基于医学共识和科学研究，避免提供有争议的建议。
-如果用户询问的问题超出你的能力范围或需要专业医疗诊断，请建议用户咨询医生。
-请使用友善、温暖的语气，避免使用过于专业的医学术语，确保普通用户能够理解。`
+  // 更新消息内容并滚动到底部
+  updateMessageContent(text) {
+    const updatedMessages = [...this.data.messages]
+    updatedMessages[updatedMessages.length - 1].content += text
 
-    // 添加天气和节气信息
-    systemPrompt += `\n\n今日环境信息：
-- 天气：${this.data.weatherInfo.description}，${this.data.weatherInfo.temperature}°C
-- 节气：${this.data.solarTermInfo}`
-
-    // 如果用户已登录且已完善个人信息，添加个性化信息
-    if (this.data.isLoggedIn && this.data.hasPersonalInfo && this.data.healthRecords) {
-      const records = this.data.healthRecords
-      
-      systemPrompt += `\n\n用户当前信息：
-- 孕周：${records.pregnancy.week}周
-- 预产期：${records.pregnancy.dueDate}`
-
-      // 添加末次产检信息（如果有）
-      if (records.pregnancy.lastCheckup) {
-        systemPrompt += `\n- 最近一次产检：${records.pregnancy.lastCheckup}`
-      }
-
-      // 添加体征信息
-      if (records.vitals && records.vitals.bloodPressure && records.vitals.bloodPressure.length > 0) {
-        systemPrompt += `\n- 最近血压：${records.vitals.bloodPressure[0].value}`
-      }
-      
-      if (records.vitals && records.vitals.weight && records.vitals.weight.length > 0) {
-        systemPrompt += `\n- 最近体重：${records.vitals.weight[0].value}kg`
-      }
-      
-      // 添加过敏信息
-      if (records.allergies && records.allergies.length > 0) {
-        systemPrompt += `\n- 过敏史：${records.allergies.join(', ')}`
-      }
-      
-      // 添加饮食偏好信息
-      if (records.dietPreferences && records.dietPreferences.length > 0) {
-        systemPrompt += `\n- 饮食偏好：${records.dietPreferences.join(', ')}`
-      }
-      
-      // 添加用药信息
-      if (records.medications && records.medications.length > 0) {
-        systemPrompt += `\n- 当前用药：${records.medications.map(med => `${med.name} ${med.dosage} ${med.frequency}`).join(', ')}`
-      }
-      
-      // 添加产检记录分析信息
-      if (records.checkupAnalysis) {
-        systemPrompt += `\n- 产检记录分析：${records.checkupAnalysis}`
-      }
-      
-      systemPrompt += `\n\n请根据用户的健康记录提供个性化的建议。特别注意用户的过敏史和饮食偏好，在提供饮食建议时避免推荐用户过敏的食物，并尊重用户的饮食偏好。同时，考虑当前的天气和节气情况，提供更加适合的健康建议。`
-    } else {
-      // 如果用户未登录或未完善个人信息，也添加天气和节气相关建议
-      systemPrompt += `\n\n请在回答用户问题时，适当考虑当前的天气和节气情况，提供更加贴合实际环境的健康建议。`
-    }
-    
-    return systemPrompt
+    this.setData({
+      messages: updatedMessages
+    }, () => {
+      // 每次更新内容后滚动到底部
+      this.scrollToBottom()
+    })
   },
 
   // 简单Markdown格式化
@@ -293,73 +329,83 @@ Page({
     if (!text) return '';
     
     try {
-      // 使用更简单的HTML格式，避免复杂的嵌套结构
+      // 创建一个格式化规则数组，一次性应用所有规则
+      const formatRules = [
+        // 处理标题 (h1-h6)
+        {
+          regex: /^(#{1,6})\s+(.*)$/gm,
+          replacement: (match, hashes, content) => {
+            const hLevel = hashes.length;
+            const fontSize = 28 - (hLevel - 1) * 2;
+            return `<div style="font-size:${fontSize}px;font-weight:bold;margin:8px 0;">${content}</div>`;
+          }
+        },
+        // 处理加粗
+        {
+          regex: /\*\*(.*?)\*\*/g,
+          replacement: '<b>$1</b>'
+        },
+        // 处理斜体
+        {
+          regex: /\*(.*?)\*/g,
+          replacement: '<i>$1</i>'
+        },
+        // 处理无序列表
+        {
+          regex: /^\s*-\s+(.*)$/gm,
+          replacement: '<div style="margin-left:16px;">• $1</div>'
+        },
+        // 处理有序列表
+        {
+          regex: /^\s*(\d+)\.\s+(.*)$/gm,
+          replacement: '<div style="margin-left:16px;">$1. $2</div>'
+        },
+        // 处理代码块
+        {
+          regex: /```([\s\S]*?)```/g,
+          replacement: '<div style="background-color:#f5f5f5;padding:8px;border-radius:4px;font-family:monospace;white-space:pre-wrap;margin:8px 0;font-size:12px;">$1</div>'
+        },
+        // 处理行内代码
+        {
+          regex: /`([^`]+)`/g,
+          replacement: '<span style="background-color:#f5f5f5;padding:2px 4px;border-radius:3px;font-family:monospace;font-size:12px;">$1</span>'
+        },
+        // 处理水平线
+        {
+          regex: /^---+$/gm,
+          replacement: '<div style="border-top:1px solid #eee;margin:8px 0;"></div>'
+        },
+        // 处理链接
+        {
+          regex: /\[([^\]]+)\]\(([^)]+)\)/g,
+          replacement: '<a style="color:#0366d6;" href="$2">$1</a>'
+        },
+        // 处理段落
+        {
+          regex: /\n\n/g,
+          replacement: '<div style="margin:8px 0;"></div>'
+        },
+        // 处理换行
+        {
+          regex: /\n/g,
+          replacement: '<br>'
+        }
+      ];
       
-      // 处理标题 (h1-h6)
-      text = text.replace(/^(#{1,6})\s+(.*)$/gm, (match, hashes, content) => {
-        const hLevel = hashes.length;
-        const fontSize = 28 - (hLevel - 1) * 2;
-        return `<div style="font-size:${fontSize}px;font-weight:bold;margin:8px 0;">${content}</div>`;
-      });
+      // 一次性应用所有规则
+      return formatRules.reduce((formattedText, rule) => {
+        return formattedText.replace(rule.regex, rule.replacement);
+      }, text);
       
-      // 处理加粗
-      text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      
-      // 处理斜体
-      text = text.replace(/\*(.*?)\*/g, '<i>$1</i>');
-      
-      // 处理无序列表
-      text = text.replace(/^\s*-\s+(.*)$/gm, '<div style="margin-left:16px;">• $1</div>');
-      
-      // 处理有序列表
-      let listIndex = 0;
-      text = text.replace(/^\s*\d+\.\s+(.*)$/gm, (match) => {
-        listIndex++;
-        return match.replace(/^\s*\d+\.\s+(.*)$/, `<div style="margin-left:16px;">${listIndex}. $1</div>`);
-      });
-      
-      // 处理引用
-      text = text.replace(/^\>\s+(.*)$/gm, '<div style="border-left:3px solid #ccc;padding-left:8px;color:#666;margin:4px 0;">$1</div>');
-      
-      // 处理代码块
-      text = text.replace(/```([\s\S]*?)```/g, '<div style="background-color:#f5f5f5;padding:8px;border-radius:4px;font-family:monospace;white-space:pre-wrap;margin:8px 0;font-size:12px;">$1</div>');
-      
-      // 处理行内代码
-      text = text.replace(/`([^`]+)`/g, '<span style="background-color:#f5f5f5;padding:2px 4px;border-radius:3px;font-family:monospace;font-size:12px;">$1</span>');
-      
-      // 处理水平线
-      text = text.replace(/^---+$/gm, '<div style="border-top:1px solid #eee;margin:8px 0;"></div>');
-      
-      // 处理链接
-      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a style="color:#0366d6;" href="$2">$1</a>');
-      
-      // 处理段落
-      text = text.replace(/\n\n/g, '<div style="margin:8px 0;"></div>');
-      
-      // 处理换行
-      text = text.replace(/\n/g, '<br>');
-      
-      // 添加调试信息
-      console.log('格式化后的内容长度:', text.length);
-      
-      return text;
     } catch (error) {
-      console.error('Markdown格式化错误:', error);
+      // 使用Logger替代console.error
+      Logger.error('Markdown格式化错误:', error);
       // 如果格式化失败，返回纯文本
       return text.replace(/\n/g, '<br>');
     }
   },
 
-  // 将文本分成小块以模拟流式输出
-  splitIntoChunks(text, chunkSize) {
-    const chunks = []
-    for (let i = 0; i < text.length; i += chunkSize) {
-      chunks.push(text.slice(i, i + chunkSize))
-    }
-    return chunks
-  },
-
-  // 延迟函数
+  // 延时函数
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
   },
@@ -437,80 +483,191 @@ Page({
     // })
   },
   
-  // 获取节气信息（简化版，实际应用中应该使用更精确的计算方法）
+  // 获取节气信息
   getSolarTermInfo() {
-    const today = new Date()
-    const month = today.getMonth() + 1 // 月份从0开始，需要+1
-    const day = today.getDate()
+    // 获取当前日期
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const day = now.getDate()
     
-    let solarTerm = ''
+    // 使用数据驱动方式定义节气
+    const solarTerms = [
+      { name: '立春', startMonth: 2, startDay: 1, endMonth: 2, endDay: 18 },
+      { name: '雨水', startMonth: 2, startDay: 19, endMonth: 3, endDay: 4 },
+      { name: '惊蛰', startMonth: 3, startDay: 5, endMonth: 3, endDay: 20 },
+      { name: '春分', startMonth: 3, startDay: 21, endMonth: 4, endDay: 4 },
+      { name: '清明', startMonth: 4, startDay: 5, endMonth: 4, endDay: 19 },
+      { name: '谷雨', startMonth: 4, startDay: 20, endMonth: 5, endDay: 5 },
+      { name: '立夏', startMonth: 5, startDay: 6, endMonth: 5, endDay: 20 },
+      { name: '小满', startMonth: 5, startDay: 21, endMonth: 6, endDay: 5 },
+      { name: '芒种', startMonth: 6, startDay: 6, endMonth: 6, endDay: 21 },
+      { name: '夏至', startMonth: 6, startDay: 22, endMonth: 7, endDay: 6 },
+      { name: '小暑', startMonth: 7, startDay: 7, endMonth: 7, endDay: 22 },
+      { name: '大暑', startMonth: 7, startDay: 23, endMonth: 8, endDay: 7 },
+      { name: '立秋', startMonth: 8, startDay: 8, endMonth: 8, endDay: 23 },
+      { name: '处暑', startMonth: 8, startDay: 24, endMonth: 9, endDay: 7 },
+      { name: '白露', startMonth: 9, startDay: 8, endMonth: 9, endDay: 23 },
+      { name: '秋分', startMonth: 9, startDay: 24, endMonth: 10, endDay: 8 },
+      { name: '寒露', startMonth: 10, startDay: 9, endMonth: 10, endDay: 23 },
+      { name: '霜降', startMonth: 10, startDay: 24, endMonth: 11, endDay: 7 },
+      { name: '立冬', startMonth: 11, startDay: 8, endMonth: 11, endDay: 22 },
+      { name: '小雪', startMonth: 11, startDay: 23, endMonth: 12, endDay: 6 },
+      { name: '大雪', startMonth: 12, startDay: 7, endMonth: 12, endDay: 21 },
+      { name: '冬至', startMonth: 12, startDay: 22, endMonth: 1, endDay: 5 },
+      { name: '小寒', startMonth: 1, startDay: 6, endMonth: 1, endDay: 20 },
+      { name: '大寒', startMonth: 1, startDay: 21, endMonth: 2, endDay: 3 }
+    ]
     
-    // 简化的节气判断（实际应用中应该使用更精确的计算方法）
-    if ((month === 2 && day >= 3 && day <= 5) || (month === 2 && day === 6 && today.getHours() < 12)) {
-      solarTerm = '立春'
-    } else if ((month === 2 && day >= 18 && day <= 20) || (month === 2 && day === 21 && today.getHours() < 12)) {
-      solarTerm = '雨水'
-    } else if ((month === 3 && day >= 5 && day <= 7) || (month === 3 && day === 8 && today.getHours() < 12)) {
-      solarTerm = '惊蛰'
-    } else if ((month === 3 && day >= 20 && day <= 22) || (month === 3 && day === 23 && today.getHours() < 12)) {
-      solarTerm = '春分'
-    } else if ((month === 4 && day >= 4 && day <= 6) || (month === 4 && day === 7 && today.getHours() < 12)) {
-      solarTerm = '清明'
-    } else if ((month === 4 && day >= 19 && day <= 21) || (month === 4 && day === 22 && today.getHours() < 12)) {
-      solarTerm = '谷雨'
-    } else if ((month === 5 && day >= 5 && day <= 7) || (month === 5 && day === 8 && today.getHours() < 12)) {
-      solarTerm = '立夏'
-    } else if ((month === 5 && day >= 20 && day <= 22) || (month === 5 && day === 23 && today.getHours() < 12)) {
-      solarTerm = '小满'
-    } else if ((month === 6 && day >= 5 && day <= 7) || (month === 6 && day === 8 && today.getHours() < 12)) {
-      solarTerm = '芒种'
-    } else if ((month === 6 && day >= 21 && day <= 23) || (month === 6 && day === 24 && today.getHours() < 12)) {
-      solarTerm = '夏至'
-    } else if ((month === 7 && day >= 6 && day <= 8) || (month === 7 && day === 9 && today.getHours() < 12)) {
-      solarTerm = '小暑'
-    } else if ((month === 7 && day >= 22 && day <= 24) || (month === 7 && day === 25 && today.getHours() < 12)) {
-      solarTerm = '大暑'
-    } else if ((month === 8 && day >= 7 && day <= 9) || (month === 8 && day === 10 && today.getHours() < 12)) {
-      solarTerm = '立秋'
-    } else if ((month === 8 && day >= 22 && day <= 24) || (month === 8 && day === 25 && today.getHours() < 12)) {
-      solarTerm = '处暑'
-    } else if ((month === 9 && day >= 7 && day <= 9) || (month === 9 && day === 10 && today.getHours() < 12)) {
-      solarTerm = '白露'
-    } else if ((month === 9 && day >= 22 && day <= 24) || (month === 9 && day === 25 && today.getHours() < 12)) {
-      solarTerm = '秋分'
-    } else if ((month === 10 && day >= 8 && day <= 10) || (month === 10 && day === 11 && today.getHours() < 12)) {
-      solarTerm = '寒露'
-    } else if ((month === 10 && day >= 23 && day <= 25) || (month === 10 && day === 26 && today.getHours() < 12)) {
-      solarTerm = '霜降'
-    } else if ((month === 11 && day >= 7 && day <= 9) || (month === 11 && day === 10 && today.getHours() < 12)) {
-      solarTerm = '立冬'
-    } else if ((month === 11 && day >= 22 && day <= 24) || (month === 11 && day === 25 && today.getHours() < 12)) {
-      solarTerm = '小雪'
-    } else if ((month === 12 && day >= 6 && day <= 8) || (month === 12 && day === 9 && today.getHours() < 12)) {
-      solarTerm = '大雪'
-    } else if ((month === 12 && day >= 21 && day <= 23) || (month === 12 && day === 24 && today.getHours() < 12)) {
-      solarTerm = '冬至'
-    } else if ((month === 1 && day >= 5 && day <= 7) || (month === 1 && day === 8 && today.getHours() < 12)) {
-      solarTerm = '小寒'
-    } else if ((month === 1 && day >= 20 && day <= 22) || (month === 1 && day === 23 && today.getHours() < 12)) {
-      solarTerm = '大寒'
-    } else {
-      // 如果不在节气日期范围内，显示最近的节气
-      if (month === 1 && day < 5) {
-        solarTerm = '冬至后'
-      } else if (month === 1 && day > 22) {
-        solarTerm = '大寒后'
-      } else if (month === 2 && day < 3) {
-        solarTerm = '大寒后'
-      } else if (month === 2 && day > 20) {
-        solarTerm = '雨水后'
-      } else {
-        solarTerm = '节气间'
+    // 查找当前日期所属的节气
+    let currentSolarTerm = '未知'
+    
+    for (const term of solarTerms) {
+      if (
+        // 在同一个月内
+        (month === term.startMonth && day >= term.startDay && month === term.endMonth && day <= term.endDay) ||
+        // 跨月，当前月是起始月
+        (month === term.startMonth && day >= term.startDay && month !== term.endMonth) ||
+        // 跨月，当前月是结束月
+        (month === term.endMonth && day <= term.endDay && month !== term.startMonth) ||
+        // 跨年特殊情况（冬至）
+        (term.name === '冬至' && ((month === 12 && day >= 22) || (month === 1 && day <= 5)))
+      ) {
+        currentSolarTerm = term.name
+        break
       }
     }
     
+    // 如果没有找到匹配的节气，使用默认值
+    if (currentSolarTerm === '未知') {
+      Logger.warn('未能确定当前节气，使用默认值')
+      currentSolarTerm = '节气未知'
+    }
+    
     this.setData({
-      solarTermInfo: solarTerm
+      solarTermInfo: currentSolarTerm
     })
-  }
+    
+    Logger.info(`当前节气: ${currentSolarTerm}`)
+  },
+  
+  // 切换模型选择器的显示状态
+  toggleModelSelector() {
+    this.setData({
+      showModelSelector: !this.data.showModelSelector
+    });
+  },
+  
+  // 选择模型
+  selectModel(e) {
+    const modelId = e.currentTarget.dataset.model;
+    this.switchModel(modelId);
+    this.setData({
+      showModelSelector: false
+    });
+  },
+  
+  // 切换模型类型
+  switchModel(modelId) {
+    // 检查提供的模型类型是否有效
+    const modelConfig = MODEL_CONFIG[modelId];
+    
+    if (modelConfig) {
+      this.setData({
+        currentModel: modelId,
+        currentModelName: modelConfig.name
+      });
+      
+      // 保存用户选择的模型到本地存储
+      try {
+        wx.setStorageSync('lastUsedModel', modelId);
+      } catch (error) {
+        Logger.error('保存模型选择时出错:', error);
+      }
+      
+      // 显示切换成功的提示
+      wx.showToast({
+        title: `已切换至 ${modelConfig.name}`,
+        icon: 'none',
+        duration: 1500
+      });
+      
+      // 记录模型切换日志
+      Logger.info(`模型已切换至 ${modelConfig.name} (${modelConfig.apiModel})`);
+    } else {
+      // 显示错误提示
+      wx.showToast({
+        title: '无效的模型类型',
+        icon: 'error',
+        duration: 1500
+      });
+      
+      Logger.error(`尝试切换至无效的模型类型: ${modelId}`);
+    }
+  },
+
+  // 验证当前选择的模型是否有效
+  validateCurrentModel() {
+    try {
+      const { currentModel } = this.data
+      
+      // 检查当前模型是否存在于配置中
+      const modelConfig = MODEL_CONFIG[currentModel]
+      
+      if (!modelConfig) {
+        // 如果当前模型不存在于配置中，则切换到第一个可用的模型
+        const modelIds = Object.keys(MODEL_CONFIG)
+        if (modelIds.length > 0) {
+          const defaultModelId = modelIds[0]
+          const defaultModel = MODEL_CONFIG[defaultModelId]
+          this.setData({ 
+            currentModel: defaultModelId,
+            currentModelName: defaultModel.name
+          })
+          Logger.info(`当前模型无效，已切换至默认模型: ${defaultModelId}`)
+        } else {
+          Logger.error('模型配置为空')
+        }
+      } else {
+        // 确保currentModelName与当前模型匹配
+        if (this.data.currentModelName !== modelConfig.name) {
+          this.setData({ currentModelName: modelConfig.name })
+        }
+        Logger.info(`当前使用模型: ${currentModel} (${modelConfig.name})`)
+      }
+    } catch (error) {
+      Logger.error('验证模型时出错:', error)
+    }
+  },
+
+  // 关闭模型选择器
+  closeModelSelector() {
+    if (this.data.showModelSelector) {
+      this.setData({
+        showModelSelector: false
+      });
+    }
+  },
+  
+  // 阻止事件冒泡
+  stopPropagation() {
+    // 仅用于阻止事件冒泡，不需要实际操作
+    return;
+  },
+
+  // 从本地存储中恢复上次使用的模型
+  restoreLastUsedModel() {
+    try {
+      const lastUsedModel = wx.getStorageSync('lastUsedModel')
+      if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
+        const modelConfig = MODEL_CONFIG[lastUsedModel]
+        this.setData({ 
+          currentModel: lastUsedModel,
+          currentModelName: modelConfig.name
+        })
+        Logger.info(`已恢复上次使用的模型: ${lastUsedModel} (${modelConfig.name})`)
+      }
+    } catch (error) {
+      Logger.error('恢复上次使用的模型时出错:', error)
+    }
+  },
 }) 

@@ -1,9 +1,23 @@
 <!--pages/chat/chat.wxml-->
-<view class="container chat-container">
+<view class="container chat-container" bindtap="closeModelSelector">
   <view class="chat-header">
-    <view class="title">AI助手</view>
+    <view class="model-display">
+      <text class="model-name">{{currentModelName}}</text>
+      <view class="dropdown-icon" catchtap="toggleModelSelector">▼</view>
+    </view>
     <view class="header-actions">
-      <view class="clear-btn" bindtap="clearChat">清空</view>
+      <view class="clear-btn" catchtap="clearChat">清空</view>
+    </view>
+  </view>
+  
+  <!-- 模型选择器下拉菜单 -->
+  <view class="model-dropdown" wx:if="{{showModelSelector}}" catchtap="stopPropagation">
+    <view class="model-option {{item.id === currentModel ? 'selected' : ''}}" 
+          wx:for="{{modelOptions}}" 
+          wx:key="id" 
+          catchtap="selectModel" 
+          data-model="{{item.id}}">
+      {{item.name}}
     </view>
   </view>
   

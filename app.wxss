@@ -2,6 +2,7 @@
 page {
   --primary-color: #E57B9E;
   --primary-light: #F8E1E7;
+  --primary-color-rgb: 229, 123, 158; /* 添加RGB格式的主色调，用于设置透明度 */
   --secondary-color: #7BBFE5;
   --secondary-light: #E1EFF8;
   --text-color: #333333;
