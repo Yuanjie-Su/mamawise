@@ -1,0 +1,4 @@
+<!--pages/chat/chat.wxml-->
+<view class="container">
+  <agent-ui showBotAvatar="{{showBotAvatar}}" modelConfig="{{modelConfig}}"></agent-ui>
+</view>

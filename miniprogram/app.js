@@ -4,7 +4,6 @@ App({
     // 初始化云开发
     wx.cloud.init({
       env: 'cloud1-3g8wu7ny156401ea', // 替换为你的云开发环境 ID
-      traceUser: true
     })
 
     // 展示本地存储能力
