@@ -1,0 +1,106 @@
+<!--pages/chat/chat.wxml-->
+<view class="container chat-container" bindtap="closeModelSelector">
+  <view class="chat-header">
+    <view class="model-display">
+      <button class="model-button" catchtap="toggleModelSelector">
+        <text class="model-name">{{currentModelName}}</text>
+        <view class="dropdown-icon">▼</view>
+      </button>
+    </view>
+    <view class="header-actions">
+      <view class="clear-btn" catchtap="clearChat" wx:if="{{messages.length > 0}}">清空</view>
+      <view class="placeholder" wx:else></view>
+    </view>
+  </view>
+  
+  <!-- 模型选择器下拉菜单 -->
+  <view class="model-dropdown" wx:if="{{showModelSelector}}" catchtap="stopPropagation">
+    <view class="dropdown-triangle"></view>
+    <view class="model-option {{item.id === currentModel ? 'selected' : ''}}" 
+          wx:for="{{modelOptions}}" 
+          wx:key="id" 
+          catchtap="selectModel" 
+          data-model="{{item.id}}">
+      <view class="model-option-name">{{item.name}}</view>
+      <view class="model-option-desc">
+        <block wx:if="{{item.id === 'DeepSeek-r1'}}">专注于复杂推理任务</block>
+        <block wx:elif="{{item.id === 'DeepSeek-v3'}}">通用性混合专家</block>
+        <block wx:else>{{item.description}}</block>
+      </view>
+    </view>
+  </view>
+  
+  <scroll-view 
+    scroll-y="true" 
+    class="message-list" 
+    scroll-top="{{scrollTop}}"
+    id="message-container"
+    enhanced="true"
+    show-scrollbar="false"
+    scroll-anchoring="true">
+    
+    <!-- 推荐问题区域，仅在没有消息时显示 -->
+    <view class="recommended-questions" wx:if="{{messages.length === 0}}">
+      <view 
+        class="recommended-question" 
+        wx:for="{{recommendedQuestions}}" 
+        wx:key="*this" 
+        bindtap="onRecommendedQuestion" 
+        data-question="{{item}}">
+        {{item}}
+      </view>
+    </view>
+    
+    <block wx:for="{{messages}}" wx:key="id">
+      <!-- 系统消息（AI回复）或用户消息 -->
+      <view class="message-item {{item.type === 'system' ? 'system-message' : 'user-message'}}">
+        <view class="message-content {{item.type === 'system' ? 'system-content' : 'user-content'}}">
+          <text class="message-text" user-select="{{item.type === 'system'}}">{{item.content}}</text>
+        </view>
+      </view>
+      
+      <!-- 在每条系统消息（AI回复）后显示推荐问题 -->
+      <view class="recommended-questions" wx:if="{{item.type === 'system' && index === messages.length - 1 && !isLoading}}">
+        <view 
+          class="recommended-question" 
+          wx:for="{{recommendedQuestions}}" 
+          wx:for-item="question"
+          wx:key="*this" 
+          bindtap="onRecommendedQuestion" 
+          data-question="{{question}}">
+          {{question}}
+        </view>
+      </view>
+    </block>
+    
+    <!-- 加载中提示 -->
+    <view class="loading-container" wx:if="{{isLoading}}">
+      <view class="loading-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+    </view>
+  </scroll-view>
+  
+  <view class="input-area">
+    <view class="input-container">
+      <input 
+        class="message-input" 
+        value="{{inputValue}}" 
+        bindinput="onInputChange"
+        placeholder="请输入您的问题..." 
+        confirm-type="send"
+        bindconfirm="sendMessage"
+        adjust-position="true"
+        cursor-spacing="20"
+      />
+      <view class="erase-btn" bindtap="clearInput" wx:if="{{inputValue.length > 0}}">
+        <image class="erase-icon" src="/images/icons/erase.png"></image>
+      </view>
+      <view class="send-btn" bindtap="sendMessage">
+        <image class="send-icon" src="/images/send.png"></image>
+      </view>
+    </view>
+  </view>
+</view> 

@@ -1,0 +1,831 @@
+/* pages/records/records.wxss */
+.records-container {
+  padding: 0;
+  background-color: #F8F8F8;
+}
+
+.records-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #FFFFFF;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+  text-align: center;
+}
+
+.header-actions {
+  display: none;
+}
+
+.chat-btn {
+  display: none;
+}
+
+.add-btn {
+  font-size: 28rpx;
+  color: var(--primary-color);
+  padding: 10rpx 20rpx;
+  border: 1rpx solid var(--primary-color);
+  border-radius: 30rpx;
+}
+
+.tabs {
+  display: flex;
+  background-color: #FFFFFF;
+  border-bottom: 1rpx solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  color: var(--text-light);
+  position: relative;
+}
+
+.tab-item.active {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40rpx;
+  height: 4rpx;
+  background-color: var(--primary-color);
+  border-radius: 2rpx;
+}
+
+.tab-content {
+  padding: 20rpx 30rpx;
+}
+
+.tab-pane {
+  min-height: 300rpx;
+}
+
+.info-card {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin-bottom: 20rpx;
+  padding-bottom: 10rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-action {
+  font-size: 28rpx;
+  color: var(--primary-color);
+  font-weight: normal;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 15rpx 0;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: var(--text-light);
+}
+
+.info-value {
+  font-weight: bold;
+}
+
+.allergy-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.allergy-item {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+  padding: 10rpx 20rpx;
+  border-radius: 30rpx;
+  margin-right: 20rpx;
+  margin-bottom: 10rpx;
+  font-size: 24rpx;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-item {
+  padding: 15rpx 0;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.note-item:last-child {
+  border-bottom: none;
+}
+
+.note-date {
+  font-size: 24rpx;
+  color: var(--text-light);
+  margin-bottom: 10rpx;
+}
+
+.note-content {
+  font-size: 28rpx;
+}
+
+.empty-tip {
+  text-align: center;
+  color: var(--text-light);
+  padding: 30rpx 0;
+  font-size: 28rpx;
+}
+
+.vitals-section {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.vitals-list {
+  padding: 0 20rpx;
+}
+
+.vitals-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.vitals-item:last-child {
+  border-bottom: none;
+}
+
+.vitals-date {
+  color: var(--text-light);
+  font-size: 26rpx;
+}
+
+.vitals-value {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.arrow {
+  color: var(--text-light);
+}
+
+.medication-list {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.medication-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.medication-item:last-child {
+  border-bottom: none;
+}
+
+.medication-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--text-color);
+  margin-bottom: 6rpx;
+  display: flex;
+  align-items: center;
+}
+
+.medication-type {
+  font-size: 22rpx;
+  font-weight: normal;
+  color: #FFFFFF;
+  background-color: var(--primary-color);
+  padding: 2rpx 10rpx;
+  border-radius: 20rpx;
+  margin-left: 10rpx;
+}
+
+.medication-details {
+  display: flex;
+  font-size: 26rpx;
+  color: var(--text-light);
+  margin-bottom: 6rpx;
+  flex-wrap: wrap;
+}
+
+.medication-dosage {
+  margin-right: 20rpx;
+}
+
+.medication-frequency {
+  margin-right: 20rpx;
+}
+
+.medication-time {
+  color: var(--primary-color);
+}
+
+.medication-dates {
+  font-size: 24rpx;
+  color: var(--text-light);
+}
+
+.edit-btn {
+  color: var(--primary-color);
+  font-size: 26rpx;
+}
+
+.checkup-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.checkup-item {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.checkup-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx;
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.checkup-date {
+  font-weight: bold;
+}
+
+.checkup-body {
+  padding: 20rpx;
+}
+
+.checkup-hospital {
+  font-size: 30rpx;
+  font-weight: bold;
+  margin-bottom: 10rpx;
+}
+
+.checkup-doctor {
+  font-size: 26rpx;
+  color: var(--text-light);
+  margin-bottom: 20rpx;
+}
+
+.checkup-items {
+  margin-bottom: 20rpx;
+}
+
+.checkup-item-row {
+  display: flex;
+  margin-bottom: 10rpx;
+}
+
+.item-name {
+  width: 120rpx;
+  color: var(--text-light);
+}
+
+.checkup-notes {
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--border-color);
+}
+
+.notes-label {
+  color: var(--text-light);
+  margin-right: 10rpx;
+}
+
+.notes-content {
+  font-size: 28rpx;
+}
+
+/* 未登录或未完善个人信息时的提示样式 */
+.auth-tip-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40rpx;
+  height: 60vh;
+}
+
+.auth-tip {
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  width: 80%;
+}
+
+.auth-tip-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: 30rpx;
+}
+
+.auth-tip-text {
+  font-size: 32rpx;
+  color: var(--text-color);
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.auth-tip-btn {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  font-size: 30rpx;
+  padding: 15rpx 60rpx;
+  border-radius: 40rpx;
+  margin: 0;
+}
+
+/* 历史产检记录样式 */
+.checkup-records-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  padding: 10rpx 0;
+}
+
+.checkup-record-item {
+  width: 220rpx;
+  background-color: #FFFFFF;
+  border-radius: 8rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.record-thumbnail {
+  width: 100%;
+  height: 160rpx;
+  object-fit: cover;
+}
+
+.record-info {
+  padding: 10rpx;
+}
+
+.record-date {
+  font-size: 24rpx;
+  color: var(--text-light);
+}
+
+.checkup-analysis {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background-color: #F8F8F8;
+  border-radius: 8rpx;
+}
+
+.analysis-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  margin-bottom: 10rpx;
+  color: var(--primary-color);
+}
+
+.analysis-content {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: var(--text-color);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 空记录提示 */
+.empty-records {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 0;
+}
+
+.empty-icon {
+  width: 80rpx;
+  height: 80rpx;
+  margin-bottom: 20rpx;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: var(--text-light);
+  margin-bottom: 20rpx;
+}
+
+.upload-btn {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  font-size: 28rpx;
+  padding: 15rpx 30rpx;
+  border-radius: 30rpx;
+}
+
+/* 产检记录列表 */
+.record-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10rpx;
+}
+
+.delete-btn {
+  font-size: 24rpx;
+  color: #FF4D4F;
+}
+
+/* 识别产检记录按钮 */
+.recognize-checkup-btn {
+  display: none; /* 隐藏旧按钮 */
+}
+
+/* 用药记录样式 */
+.medication-section {
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  margin: 20rpx;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.medication-header {
+  justify-content: center;
+  padding: 30rpx;
+}
+
+.add-medication-btn {
+  display: none;
+}
+
+.add-medication-row {
+  display: none;
+}
+
+.add-medication-center {
+  display: none;
+}
+
+.empty-medication-container {
+  display: none;
+}
+
+.medication-list {
+  padding: 0 20rpx;
+}
+
+.medication-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 10rpx;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.medication-item:last-child {
+  border-bottom: none;
+}
+
+.medication-info {
+  flex: 1;
+}
+
+.medication-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--text-color);
+  margin-bottom: 6rpx;
+  display: flex;
+  align-items: center;
+}
+
+.medication-type {
+  font-size: 22rpx;
+  font-weight: normal;
+  color: #FFFFFF;
+  background-color: var(--primary-color);
+  padding: 2rpx 10rpx;
+  border-radius: 20rpx;
+  margin-left: 10rpx;
+}
+
+.medication-details {
+  display: flex;
+  font-size: 26rpx;
+  color: var(--text-light);
+  margin-bottom: 6rpx;
+  flex-wrap: wrap;
+}
+
+.medication-dosage {
+  margin-right: 20rpx;
+}
+
+.medication-frequency {
+  margin-right: 20rpx;
+}
+
+.medication-time {
+  color: var(--primary-color);
+}
+
+.medication-dates {
+  font-size: 24rpx;
+  color: var(--text-light);
+}
+
+.medication-actions {
+  display: flex;
+}
+
+.edit-btn, .delete-btn {
+  font-size: 26rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
+  margin-left: 10rpx;
+}
+
+.edit-btn {
+  color: var(--primary-color);
+  border: 1rpx solid var(--primary-color);
+}
+
+.delete-btn {
+  color: #FF4D4F;
+  border: 1rpx solid #FF4D4F;
+}
+
+/* 用药表单样式 */
+.medication-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.form-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.form-container {
+  position: relative;
+  width: 90%;
+  max-height: 90%;
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.form-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.close-btn {
+  font-size: 40rpx;
+  color: var(--text-light);
+  padding: 0 10rpx;
+}
+
+.form-content {
+  flex: 1;
+  padding: 30rpx;
+  overflow-y: auto;
+}
+
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: var(--text-color);
+  margin-bottom: 10rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  border: 1rpx solid var(--border-color);
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.picker-view {
+  width: 100%;
+  height: 80rpx;
+  border: 1rpx solid var(--border-color);
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker-arrow {
+  color: var(--text-light);
+  font-size: 24rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  height: 160rpx;
+  border: 1rpx solid var(--border-color);
+  border-radius: 8rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.form-footer {
+  display: flex;
+  padding: 20rpx 30rpx;
+  border-top: 1rpx solid var(--border-color);
+}
+
+.cancel-btn, .submit-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  margin: 0 10rpx;
+}
+
+.cancel-btn {
+  background-color: #F5F5F5;
+  color: var(--text-color);
+}
+
+.submit-btn {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+}
+
+.add-vitals-btn {
+  display: none;
+}
+
+/* 体征记录表单样式 */
+.vitals-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vitals-type-display {
+  width: 100%;
+  height: 80rpx;
+  border: 1rpx solid var(--border-color);
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  background-color: #F5F5F5;
+}
+
+.vitals-unit {
+  color: var(--text-light);
+  margin-left: 10rpx;
+  font-size: 24rpx;
+}
+
+.value-range-tip {
+  font-size: 24rpx;
+  color: var(--text-light);
+  margin-top: 10rpx;
+  padding: 0 10rpx;
+}
+
+.add-info-btn {
+  font-size: 26rpx;
+  color: var(--primary-color);
+  padding: 6rpx 16rpx;
+  border: 1rpx solid var(--primary-color);
+  border-radius: 30rpx;
+}
+
+/* 过敏信息和饮食偏好表单样式 */
+.info-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 产检记录按钮样式 */
+.add-checkup-container {
+  display: none;
+}
+
+.add-checkup-btn {
+  display: none;
+}
+
+.add-checkup-icon {
+  display: none;
+} 

@@ -4,6 +4,7 @@
     "ignore": [],
     "include": []
   },
+  "miniprogramRoot": "miniprogram/",
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -37,7 +38,8 @@
     "packNpmManually": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
-    "showES6CompileOption": false
+    "showES6CompileOption": false,
+    "ignoreUploadUnusedFiles": true
   },
   "compileType": "miniprogram",
   "libVersion": "3.7.1",
@@ -47,5 +49,6 @@
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
-  }
+  },
+  "srcMiniprogramRoot": "miniprogram/"
 }

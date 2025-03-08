@@ -1,0 +1,50 @@
+/* 消息组件样式 */
+.message-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10rpx;
+  position: relative;
+  max-width: 90%;
+}
+
+.system-message {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.user-message {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.message-content {
+  padding: 20rpx;
+  border-radius: 10rpx;
+  word-wrap: break-word;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.system-content {
+  background-color: #FFFFFF;
+  color: var(--text-color, #333333);
+  border-top-left-radius: 0;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  text-align: left;
+  align-self: flex-start;
+}
+
+.user-content {
+  background-color: var(--primary-color, #E57B9E);
+  color: #FFFFFF;
+  border-top-right-radius: 0;
+  text-align: left;
+  align-self: flex-end;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 28rpx;
+  line-height: 1.5;
+} 

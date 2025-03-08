@@ -1,0 +1,362 @@
+/* pages/chat/chat.wxss */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+  background-color: #F8F8F8;
+  position: relative;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #FFFFFF;
+  border-bottom: 1rpx solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.model-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.model-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: normal;
+  font-size: inherit;
+  color: inherit;
+  border-radius: 30rpx;
+  padding: 6rpx 20rpx;
+}
+
+.model-button::after {
+  border: none;
+}
+
+.model-name {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.dropdown-icon {
+  font-size: 20rpx;
+  color: var(--primary-color);
+  margin-left: 8rpx;
+  margin-top: 4rpx;
+  cursor: pointer;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  min-width: 80rpx; /* 设置最小宽度，确保区域不会缩小 */
+  height: 40rpx; /* 设置固定高度 */
+}
+
+.records-btn {
+  font-size: 28rpx;
+  color: var(--primary-color);
+  margin-right: 20rpx;
+  padding: 6rpx 20rpx;
+  border: 1rpx solid var(--primary-color);
+  border-radius: 30rpx;
+}
+
+.clear-btn {
+  font-size: 28rpx;
+  color: #999999;
+  padding: 6rpx 16rpx;
+  border-radius: 30rpx;
+}
+
+.placeholder {
+  width: 80rpx; /* 与clear-btn按钮宽度一致 */
+  height: 40rpx; /* 与clear-btn按钮高度一致 */
+}
+
+/* 模型选择器样式 */
+.model-selector {
+  margin-right: 20rpx;
+  padding: 6rpx 10rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.model-icon {
+  font-size: 32rpx;
+}
+
+.model-dropdown {
+  position: absolute;
+  top: 100rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+  width: 280rpx;
+  max-height: 400rpx;
+  overflow-y: auto;
+  padding-top: 10rpx;
+}
+
+.dropdown-triangle {
+  position: absolute;
+  top: -10rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10rpx solid transparent;
+  border-right: 10rpx solid transparent;
+  border-bottom: 10rpx solid #FFFFFF;
+}
+
+.model-option {
+  padding: 20rpx 30rpx;
+  font-size: 28rpx;
+  color: #333333;
+  border-bottom: 1rpx solid #F0F0F0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.model-option-name {
+  font-size: 28rpx;
+  margin-bottom: 6rpx;
+}
+
+.model-option-desc {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.model-option.selected {
+  color: var(--primary-color);
+  font-weight: bold;
+  background-color: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.model-option.selected .model-option-desc {
+  color: var(--primary-color);
+  opacity: 0.8;
+}
+
+.model-option:last-child {
+  border-bottom: none;
+}
+
+.model-option:active {
+  background-color: #F8F8F8;
+}
+
+.message-list {
+  display: flex;
+  flex-direction: column;
+  padding: 20rpx 30rpx;
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 120rpx; /* 为底部输入框留出空间 */
+}
+
+/* 推荐问题样式 */
+.recommended-questions {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  margin-bottom: 20rpx;
+  margin-top: 10rpx;
+  margin-left: 20rpx; /* 为AI回复后的推荐问题添加左边距 */
+  max-width: 90%; /* 限制最大宽度 */
+}
+
+.recommended-title {
+  font-size: 30rpx;
+  color: var(--text-light);
+  margin-top: 10rpx;
+  margin-bottom: 10rpx;
+}
+
+.recommended-question {
+  background-color: #FFFFFF;
+  color: var(--primary-color);
+  padding: 16rpx 24rpx;
+  border-radius: 10rpx;
+  margin-bottom: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  width: fit-content;
+  max-width: 100%;
+  text-align: left;
+  font-size: 28rpx;
+  border: 1rpx solid var(--primary-light);
+  transition: all 0.3s ease;
+}
+
+.recommended-question:active {
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  transform: scale(0.98);
+}
+
+.message-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10rpx;
+  position: relative;
+  max-width: 90%;
+}
+
+.system-message {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.user-message {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.message-content {
+  padding: 20rpx;
+  border-radius: 10rpx;
+  word-wrap: break-word;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.system-content {
+  background-color: #FFFFFF;
+  color: var(--text-color);
+  border-top-left-radius: 0;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  text-align: left;
+  align-self: flex-start;
+}
+
+.user-content {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  border-top-right-radius: 0;
+  text-align: left;
+  align-self: flex-end;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 30rpx;
+  padding-left: 60rpx;
+}
+
+.loading-dots {
+  display: flex;
+  align-items: center;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  margin: 0 6rpx;
+  animation: dot-flashing 1s infinite alternate;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-flashing {
+  0% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.input-area {
+  padding: 20rpx 30rpx;
+  background-color: #FFFFFF;
+  border-top: 1rpx solid var(--border-color);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  background-color: #F5F5F5;
+  border-radius: 40rpx;
+  padding: 0 20rpx;
+}
+
+.message-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+}
+
+.erase-btn, .send-btn {
+  width: 60rpx; /* 调整宽度 */
+  height: 60rpx; /* 调整高度 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20rpx; /* 圆形按钮 */
+  background-color: transparent; /* 默认背景透明 */
+}
+
+.erase-icon {
+  width: 40rpx; /* 图标宽度 */
+  height: 40rpx; /* 图标高度 */
+}
+
+.send-icon {
+  width: 48rpx; /* 图标宽度 */
+  height: 48rpx; /* 图标高度 */
+}
+
+.fallback-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 28rpx;
+  line-height: 1.5;
+}

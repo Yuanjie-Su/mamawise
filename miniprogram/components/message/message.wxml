@@ -1,0 +1,6 @@
+<!-- 消息组件 -->
+<view class="message-item {{type === 'system' ? 'system-message' : 'user-message'}}" bindlongpress="onLongPress">
+  <view class="message-content {{type === 'system' ? 'system-content' : 'user-content'}}">
+    <text class="message-text" user-select="{{selectable}}">{{content}}</text>
+  </view>
+</view> 
