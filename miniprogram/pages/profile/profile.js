@@ -1,6 +1,6 @@
 const app = getApp()
 import Logger from '../../utils/logger'
-import weatherService from '../../services/weatherService'
+import solarTermService from '../../services/solarTermService'
 
 Page({
   data: {
@@ -15,7 +15,7 @@ Page({
         id: 1,
         name: '我的收藏',
         icon: '/images/favorite.png',
-        url: ''
+        url: '/pages/favorites/favorites'
       },
       {
         id: 2,
@@ -116,18 +116,22 @@ Page({
     
     // 初始化日历数据
     this.initCalendarData()
-    // 获取天气和节气信息
-    this.updateWeatherAndSolarTerm()
+    
+    // 获取节气信息
+    this.updateSolarTerm()
   },
   
   onShow() {
+    Logger.info('个人页面显示');
+    
     // 每次显示页面时检查登录状态
-    this.checkLoginStatus()
+    this.checkLoginStatus();
     
     // 初始化日历数据
-    this.initCalendarData()
-    // 获取天气和节气信息
-    this.updateWeatherAndSolarTerm()
+    this.initCalendarData();
+    
+    // 获取节气信息
+    this.updateSolarTerm();
   },
   
   // 检查登录状态和个人信息
@@ -831,16 +835,16 @@ Page({
     Logger.debug('初始化日历数据', this.data.calendarData)
   },
   
-  // 更新天气和节气信息
-  updateWeatherAndSolarTerm() {
-    // 获取天气信息
-    weatherService.getWeatherInfo().then(weatherInfo => {
-      this.setData({ weatherInfo });
-    });
+  // 更新节气信息
+  updateSolarTerm() {
+    Logger.debug('开始更新节气信息');
     
     // 获取节气信息
-    const solarTermInfo = weatherService.getSolarTermInfo();
-    this.setData({ solarTermInfo });
+    const solarTermInfo = solarTermService.getSolarTermInfo();
+    Logger.debug('获取到节气信息', solarTermInfo);
+    this.setData({ solarTermInfo }, () => {
+      Logger.debug('节气信息已更新到界面');
+    });
   },
 
   // 显示关于我们

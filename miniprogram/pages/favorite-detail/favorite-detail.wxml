@@ -1,0 +1,22 @@
+<!-- 收藏详情页面 -->
+<view class="detail-container">
+  <view class="content-container" wx:if="{{favorite}}">
+    <!-- 加载中状态 -->
+    <view class="loading-container" wx:if="{{isLoading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <!-- 文档内容 -->
+    <view class="content-card" wx:else>
+      <view class="document-title">{{favorite.title || '收藏内容'}}</view>
+      <text class="content-text">{{favorite.content}}</text>
+    </view>
+  </view>
+  
+  <view class="not-found" wx:else>
+    <image class="not-found-image" src="/images/not-found.png"></image>
+    <text class="not-found-text">未找到该收藏内容</text>
+    <button class="back-to-list" bindtap="backToList">返回收藏列表</button>
+  </view>
+</view> 

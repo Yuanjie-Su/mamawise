@@ -666,6 +666,7 @@
 .calendar-date {
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .calendar-day {
@@ -680,69 +681,38 @@
 .calendar-info {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .calendar-year-month {
   font-size: 28rpx;
   color: var(--text-color);
+  margin-bottom: 6rpx;
+}
+
+.calendar-weekday-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .calendar-weekday {
   font-size: 24rpx;
   color: var(--text-light);
-  margin-top: 4rpx;
-}
-
-.weather-solar-info {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.weather-info {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-right: 20rpx;
-}
-
-.weather-icon {
-  width: 60rpx;
-  height: 60rpx;
-  margin-right: 8rpx;
-}
-
-.weather-details {
-  display: flex;
-  align-items: center;
-  height: 60rpx;
-}
-
-.weather-temp {
-  font-size: 36rpx;
-  color: var(--text-light);
-  line-height: 60rpx;
-}
-
-.weather-desc {
-  font-size: 24rpx;
-  color: var(--text-color);
+  margin-right: 10rpx;
 }
 
 .solar-term-info {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-}
-
-.solar-term-label {
-  font-size: 24rpx;
-  color: var(--text-color);
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  margin-left: 10rpx;
 }
 
 .solar-term-value {
-  font-size: 24rpx;
-  color: var(--text-light);
-  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--primary-color);
+  font-weight: 500;
 }

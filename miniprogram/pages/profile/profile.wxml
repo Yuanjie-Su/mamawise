@@ -26,19 +26,12 @@
           <view class="calendar-day">{{calendarData.day}}</view>
           <view class="calendar-info">
             <view class="calendar-year-month">{{calendarData.year}}年{{calendarData.month}}月</view>
-            <view class="calendar-weekday">星期{{calendarData.weekday}}</view>
-          </view>
-        </view>
-        <view class="weather-solar-info">
-          <view class="weather-info">
-            <image wx:if="{{weatherInfo.icon}}" class="weather-icon" src="{{weatherInfo.icon}}"></image>
-            <view class="weather-details">
-              <text class="weather-temp">{{weatherInfo.temperature}}°C</text>
+            <view class="calendar-weekday-row">
+              <text class="calendar-weekday">星期{{calendarData.weekday}}</text>
+              <view class="solar-term-info" wx:if="{{solarTermInfo}}">
+                <text class="solar-term-value">{{solarTermInfo}}</text>
+              </view>
             </view>
-          </view>
-          <view class="solar-term-info">
-            <text class="solar-term-label">节气</text>
-            <text class="solar-term-value">{{solarTermInfo}}</text>
           </view>
         </view>
       </view>

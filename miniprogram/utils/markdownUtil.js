@@ -113,7 +113,27 @@ function containsMarkdown(text) {
   return markdownPatterns.some(pattern => pattern.test(text));
 }
 
+/**
+ * 去除Markdown语法，转换为纯文本
+ * @param {String} text - 包含Markdown语法的文本
+ * @returns {String} 去除Markdown语法后的纯文本
+ */
+function stripMarkdown(text) {
+  if (!text) return '';
+  
+  // 去除Markdown语法，但保留换行符
+  return text
+    .replace(/#{1,6}\s+/g, '') // 去除标题
+    .replace(/\*\*(.*?)\*\*/g, '$1') // 去除加粗
+    .replace(/\*(.*?)\*/g, '$1') // 去除斜体
+    .replace(/```([\s\S]*?)```/g, '$1') // 去除代码块
+    .replace(/`([^`]+)`/g, '$1') // 去除行内代码
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)') // 转换链接
+    .replace(/\n/g, '\n'); // 确保换行符保留
+}
+
 export default {
   formatMarkdown,
-  containsMarkdown
+  containsMarkdown,
+  stripMarkdown
 }; 

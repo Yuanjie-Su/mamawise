@@ -4,15 +4,6 @@
     <view class="header-title">设置</view>
   </view>
   
-  <!-- 权限设置 -->
-  <view class="settings-section">
-    <view class="section-title">权限设置</view>
-    <view class="settings-item" bindtap="openLocationSettings">
-      <text class="item-label">位置信息授权</text>
-      <text class="arrow">></text>
-    </view>
-  </view>
-  
   <!-- 关于 -->
   <view class="settings-section">
     <view class="section-title">关于</view>

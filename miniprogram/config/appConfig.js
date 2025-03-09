@@ -10,17 +10,13 @@ const STORAGE_KEYS = {
   USER_INFO: 'userInfo',
   LOGIN_STATUS: 'loginStatus',
   HEALTH_RECORDS: 'healthRecords',
-  LAST_WEATHER_TIME: 'lastWeatherTime',
-  WEATHER_INFO: 'weatherInfo',
-  LOCATION_AUTH_REMINDED: 'hasLocationAuthReminded',
   CURRENT_MODEL: 'currentModel',
   CHAT_HISTORY: 'chatHistory'
 };
 
 // API配置
 const API_CONFIG = {
-  WEATHER_API_KEY: '1cd02e1b1c1a2105477a40ee5f37e9bd',
-  WEATHER_API_URL: 'https://api.openweathermap.org/data/2.5/weather'
+  // 其他API配置
 };
 
 // 云函数名称

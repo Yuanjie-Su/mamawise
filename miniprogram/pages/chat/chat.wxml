@@ -1,5 +1,8 @@
 <!--pages/chat/chat.wxml-->
 <view class="container chat-container" bindtap="closeModelSelector">
+  <!-- 隐藏的canvas用于生成分享图片 -->
+  <canvas canvas-id="shareCanvas" style="position: absolute; left: -9999px; width: 750px; height: {{canvasHeight}}px;"></canvas>
+  
   <view class="chat-header">
     <view class="model-display">
       <button class="model-button" catchtap="toggleModelSelector">
@@ -8,8 +11,7 @@
       </button>
     </view>
     <view class="header-actions">
-      <view class="clear-btn" catchtap="clearChat" wx:if="{{messages.length > 0}}">清空</view>
-      <view class="placeholder" wx:else></view>
+      <view class="placeholder"></view>
     </view>
   </view>
   
@@ -22,11 +24,7 @@
           catchtap="selectModel" 
           data-model="{{item.id}}">
       <view class="model-option-name">{{item.name}}</view>
-      <view class="model-option-desc">
-        <block wx:if="{{item.id === 'DeepSeek-r1'}}">专注于复杂推理任务</block>
-        <block wx:elif="{{item.id === 'DeepSeek-v3'}}">通用性混合专家</block>
-        <block wx:else>{{item.description}}</block>
-      </view>
+      <view class="model-option-desc">{{item.description}}</view>
     </view>
   </view>
   
@@ -37,30 +35,13 @@
     id="message-container"
     enhanced="true"
     show-scrollbar="false"
-    scroll-anchoring="true">
+    scroll-anchoring="true"
+    bounces="{{false}}"
+    enable-flex="true">
     
-    <!-- 推荐问题区域，仅在没有消息时显示 -->
-    <view class="recommended-questions" wx:if="{{messages.length === 0}}">
-      <view 
-        class="recommended-question" 
-        wx:for="{{recommendedQuestions}}" 
-        wx:key="*this" 
-        bindtap="onRecommendedQuestion" 
-        data-question="{{item}}">
-        {{item}}
-      </view>
-    </view>
-    
-    <block wx:for="{{messages}}" wx:key="id">
-      <!-- 系统消息（AI回复）或用户消息 -->
-      <view class="message-item {{item.type === 'system' ? 'system-message' : 'user-message'}}">
-        <view class="message-content {{item.type === 'system' ? 'system-content' : 'user-content'}}">
-          <text class="message-text" user-select="{{item.type === 'system'}}">{{item.content}}</text>
-        </view>
-      </view>
-      
-      <!-- 在每条系统消息（AI回复）后显示推荐问题 -->
-      <view class="recommended-questions" wx:if="{{item.type === 'system' && index === messages.length - 1 && !isLoading}}">
+    <view class="message-list-content">
+      <!-- 推荐问题区域，仅在没有消息时显示 -->
+      <view class="recommended-questions" wx:if="{{messages.length === 0}}">
         <view 
           class="recommended-question" 
           wx:for="{{recommendedQuestions}}" 
@@ -71,17 +52,64 @@
           {{question}}
         </view>
       </view>
-    </block>
-    
-    <!-- 加载中提示 -->
-    <view class="loading-container" wx:if="{{isLoading}}">
-      <view class="loading-dots">
-        <view class="dot"></view>
-        <view class="dot"></view>
-        <view class="dot"></view>
+      
+      <block wx:for="{{messages}}" wx:key="id">
+        <!-- 用户消息始终显示 -->
+        <view class="message-item user-message" wx:if="{{item.type === 'user'}}">
+          <view class="message-content user-content">
+            <text class="message-text">{{item.content}}</text>
+          </view>
+        </view>
+        
+        <!-- 系统消息（AI回复）只有当有内容时才显示 -->
+        <view class="message-item system-message" wx:if="{{item.type === 'system'}}">
+          <view class="message-content system-content">
+            <text class="message-text" user-select="true">{{item.content}}</text>
+            
+            <!-- 只在AI回复消息中显示操作按钮，且不是正在加载的消息 -->
+            <view class="message-actions" wx:if="{{item.id !== loadingMessageId}}">
+              <view class="action-btn copy-btn" catchtap="copyMessage" data-content="{{item.content}}">
+                <image class="action-icon" src="/images/icons/copy.png" mode="aspectFit"></image>
+              </view>
+              <view class="action-btn share-btn" catchtap="shareMessage" data-content="{{item.content}}" data-index="{{index}}">
+                <image class="action-icon" src="/images/icons/share.png" mode="aspectFit"></image>
+              </view>
+              <view class="action-btn favorite-btn" catchtap="toggleFavorite" data-content="{{item.content}}" data-id="{{item.id}}">
+                <image class="action-icon" src="{{item.isFavorited ? '/images/icons/favorited.png' : '/images/icons/favorite.png'}}" mode="aspectFit"></image>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+      
+      <!-- 加载中提示 -->
+      <view class="loading-container" wx:if="{{isLoading}}">
+        <view class="loading-dots">
+          <view class="dot"></view>
+          <view class="dot"></view>
+          <view class="dot"></view>
+        </view>
+      </view>
+      
+      <!-- 推荐问题区域，只要有消息且不在加载中就显示 -->
+      <view class="recommended-questions bottom-questions" wx:if="{{messages.length > 0 && !isLoading}}">
+        <view 
+          class="recommended-question" 
+          wx:for="{{recommendedQuestions}}" 
+          wx:for-item="question"
+          wx:key="*this" 
+          bindtap="onRecommendedQuestion" 
+          data-question="{{question}}">
+          {{question}}
+        </view>
       </view>
     </view>
   </scroll-view>
+  
+  <!-- 悬浮清除按钮 -->
+  <view class="floating-clear-btn" catchtap="clearChat" wx:if="{{messages.length > 0}}">
+    <image class="clear-icon" src="/images/icons/clear.png" mode="aspectFit"></image>
+  </view>
   
   <view class="input-area">
     <view class="input-container">
@@ -95,11 +123,11 @@
         adjust-position="true"
         cursor-spacing="20"
       />
-      <view class="erase-btn" bindtap="clearInput" wx:if="{{inputValue.length > 0}}">
+      <view class="erase-btn" bindtap="clearInput" wx:if="{{inputValue.length > 0 && !isLoading}}">
         <image class="erase-icon" src="/images/icons/erase.png"></image>
       </view>
-      <view class="send-btn" bindtap="sendMessage">
-        <image class="send-icon" src="/images/send.png"></image>
+      <view class="send-btn" bindtap="{{isLoading ? 'stopGenerating' : 'sendMessage'}}">
+        <image class="send-icon" src="{{isLoading ? '/images/icons/send_stop.png' : '/images/send.png'}}"></image>
       </view>
     </view>
   </view>

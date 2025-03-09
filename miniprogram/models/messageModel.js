@@ -13,8 +13,7 @@ function createUserMessage(id, content) {
   return {
     id,
     type: 'user',
-    content,
-    timestamp: Date.now()
+    content
   };
 }
 
@@ -28,8 +27,7 @@ function createSystemMessage(id, content) {
   return {
     id,
     type: 'system',
-    content,
-    timestamp: Date.now()
+    content
   };
 }
 
@@ -55,22 +53,9 @@ function updateMessageContent(message, content) {
   };
 }
 
-/**
- * 获取消息时间戳的格式化字符串
- * @param {Object} message - 消息对象
- * @returns {String} 格式化的时间字符串
- */
-function getFormattedTime(message) {
-  const date = new Date(message.timestamp);
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
-}
-
 export default {
   createUserMessage,
   createSystemMessage,
   createEmptySystemMessage,
-  updateMessageContent,
-  getFormattedTime
+  updateMessageContent
 }; 

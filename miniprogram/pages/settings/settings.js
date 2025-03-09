@@ -124,38 +124,7 @@ Page({
   
   // 查看用户协议
   viewUserAgreement() {
-    wx.navigateTo({
-      url: '/pages/policy/agreement'
-    })
+    // 这里可以跳转到用户协议页面或者显示用户协议内容
+    Logger.info('用户查看用户协议');
   },
-  
-  // 打开位置信息授权设置
-  openLocationSettings() {
-    wx.showModal({
-      title: '位置信息授权',
-      content: '我们需要获取您的位置信息，仅用于为您提供所在地区的实时天气服务，帮助您更好地规划日常活动。您的位置数据将被严格保密，不会用于其他用途。',
-      confirmText: '去授权',
-      cancelText: '取消',
-      success: (res) => {
-        if (res.confirm) {
-          wx.openSetting({
-            success: (settingRes) => {
-              if (settingRes.authSetting['scope.userLocation']) {
-                wx.showToast({
-                  title: '授权成功',
-                  icon: 'success'
-                });
-                Logger.info('用户成功授权位置信息');
-              } else {
-                Logger.info('用户未授权位置信息');
-              }
-            },
-            fail: (err) => {
-              Logger.error('打开设置页面失败', err);
-            }
-          });
-        }
-      }
-    });
-  }
 }) 

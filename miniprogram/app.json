@@ -5,7 +5,9 @@
     "pages/profile/profile",
     "pages/settings/settings",
     "pages/policy/privacy",
-    "pages/policy/agreement"
+    "pages/policy/agreement",
+    "pages/favorites/favorites",
+    "pages/favorite-detail/favorite-detail"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -48,5 +50,8 @@
     "scope.userLocation": {
       "desc": "您的位置信息将用于获取当前天气状况"
     }
-  }
+  },
+  "subPackages": [],
+  "subpackages": [],
+  "usingComponents": {}
 } 
