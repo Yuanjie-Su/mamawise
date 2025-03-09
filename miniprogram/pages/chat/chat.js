@@ -1,4 +1,4 @@
-import appState from '../../models/appState'
+const app = getApp()
 import Logger from '../../utils/logger'
 import aiService from '../../services/aiService'
 import weatherService from '../../services/weatherService'
@@ -25,7 +25,11 @@ Page({
     // 要滚动到的消息的标识，用于定位到特定消息
     scrollToMessage: '', 
     // 推荐问题列表，显示在页面上供用户快速选择提问，每次随机生成3个符合语境的问题
-    recommendedQuestions: [],
+    recommendedQuestions: [
+      '健康饮食有什么建议？',
+      '如何保持良好的作息？',
+      '日常应该注意什么？'
+    ],
     // 用户登录状态
     isLoggedIn: false,
     // 是否已完善个人信息
@@ -45,9 +49,7 @@ Page({
     // 是否显示模型选择器
     showModelSelector: false,
     // 可用的模型类型列表
-    modelOptions: MODEL_OPTIONS,
-    // 页面状态
-    showLoginModal: false
+    modelOptions: MODEL_OPTIONS
   },
 
   onLoad() {
@@ -70,28 +72,6 @@ Page({
     
     // 获取天气和节气信息
     this.updateWeatherAndSolarTerm()
-    
-    // 订阅用户登录状态变更
-    this.unsubscribeLogin = appState.subscribe('user.isLoggedIn', (isLoggedIn) => {
-      this.setData({ isLoggedIn })
-      
-      // 如果用户已登录，获取用户信息
-      if (isLoggedIn) {
-        const userInfo = appState.get('user.userInfo')
-        this.setData({ userInfo })
-      } else {
-        this.setData({ showLoginModal: true })
-      }
-    })
-    
-    // 订阅环境信息变更
-    this.unsubscribeWeather = appState.subscribe('environment.weatherInfo', (weatherInfo) => {
-      this.setData({ weatherInfo })
-    })
-    
-    this.unsubscribeSolarTerm = appState.subscribe('environment.solarTermInfo', (solarTermInfo) => {
-      this.setData({ solarTermInfo })
-    })
   },
   
   onShow() {
@@ -174,64 +154,26 @@ Page({
   },
 
   // 发送消息
-  sendMessage: function() {
-    const { inputValue, messages, isLoading } = this.data;
+  sendMessage() {
+    const inputValue = this.data.inputValue.trim()
     
-    // 如果正在加载或输入为空，则不发送
-    if (isLoading || !inputValue.trim()) {
-      return;
+    if (!inputValue) {
+      return
     }
     
     // 添加用户消息
-    const userMessage = {
-      type: 'user',
-      content: inputValue,
-      time: new Date().toLocaleTimeString()
-    };
-    
-    const newMessages = [...messages, userMessage];
+    const updatedMessages = chatService.addUserMessage(inputValue, this.data.messages)
     
     this.setData({
-      messages: newMessages,
-      inputValue: '',
-      isLoading: true
-    });
-    
-    // 滚动到底部
-    this.scrollToBottom();
-    
-    // 调用AI回复
-    this.getAIResponse(inputValue, newMessages);
-  },
-  
-  // 获取AI回复
-  getAIResponse: function(userInput, messageHistory) {
-    // 获取当前AI模型
-    const currentModel = appState.get('ai.currentModel');
-    
-    // 构建请求参数
-    const params = {
-      model: currentModel,
-      messages: this.formatMessagesForAPI(messageHistory),
-      userInfo: appState.get('user.userInfo'),
-      weatherInfo: appState.get('environment.weatherInfo'),
-      solarTermInfo: appState.get('environment.solarTermInfo')
-    };
-    
-    // 调用云函数
-    wx.cloud.callFunction({
-      name: 'generateText',
-      data: params,
-      success: res => {
-        // 处理成功响应
-        this.handleAIResponse(res.result);
-      },
-      fail: err => {
-        // 处理错误
-        Logger.error('AI回复失败', err);
-        this.handleAIError();
-      }
-    });
+      messages: updatedMessages,
+      inputValue: ''
+    }, () => {
+      // 滚动到底部
+      this.scrollToBottom()
+      
+      // 生成AI回复
+      this.generateAIResponse(inputValue)
+    })
   },
 
   // 生成AI回复
@@ -383,24 +325,13 @@ Page({
   // 更新天气和节气信息
   updateWeatherAndSolarTerm() {
     // 获取天气信息
-    weatherService.getWeatherInfo()
-      .then(weatherInfo => {
-        // 更新状态
-        appState.set('environment.weatherInfo', weatherInfo);
-      })
-      .catch(error => {
-        Logger.error('获取天气信息失败', error);
-      });
+    weatherService.getWeatherInfo().then(weatherInfo => {
+      this.setData({ weatherInfo });
+    });
     
     // 获取节气信息
-    weatherService.getSolarTermInfo()
-      .then(solarTermInfo => {
-        // 更新状态
-        appState.set('environment.solarTermInfo', solarTermInfo);
-      })
-      .catch(error => {
-        Logger.error('获取节气信息失败', error);
-      });
+    const solarTermInfo = weatherService.getSolarTermInfo();
+    this.setData({ solarTermInfo });
   },
 
   // 切换模型选择器的显示状态
@@ -541,158 +472,4 @@ Page({
       Logger.error('加载聊天记录失败', error)
     }
   },
-
-  // 页面卸载时
-  onUnload: function() {
-    // 取消状态订阅
-    if (this.unsubscribeLogin) this.unsubscribeLogin()
-    if (this.unsubscribeWeather) this.unsubscribeWeather()
-    if (this.unsubscribeSolarTerm) this.unsubscribeSolarTerm()
-    
-    Logger.info('聊天页面卸载')
-  },
-
-  // 生成推荐问题
-  generateRecommendedQuestions: function() {
-    const { messages } = this.data;
-    
-    // 如果没有消息历史，使用默认推荐问题
-    if (messages.length === 0) {
-      this.useDefaultRecommendedQuestions();
-      return;
-    }
-    
-    // 获取当前AI模型
-    const currentModel = appState.get('ai.currentModel');
-    
-    // 构建请求参数
-    const params = {
-      model: currentModel,
-      messages: this.formatMessagesForAPI(messages),
-      task: 'generate_questions',
-      userInfo: appState.get('user.userInfo'),
-      weatherInfo: appState.get('environment.weatherInfo'),
-      solarTermInfo: appState.get('environment.solarTermInfo')
-    };
-    
-    // 调用云函数
-    wx.cloud.callFunction({
-      name: 'generateText',
-      data: params,
-      success: res => {
-        // 处理成功响应
-        if (res.result && res.result.questions && Array.isArray(res.result.questions)) {
-          // 确保只有3个问题
-          const questions = res.result.questions.slice(0, 3);
-          
-          this.setData({
-            recommendedQuestions: questions
-          });
-        } else {
-          this.useDefaultRecommendedQuestions();
-        }
-      },
-      fail: err => {
-        // 处理错误
-        Logger.error('生成推荐问题失败', err);
-        this.useDefaultRecommendedQuestions();
-      }
-    });
-  },
-
-  // 使用默认推荐问题
-  useDefaultRecommendedQuestions: function() {
-    const defaultQuestions = [
-      '怀孕期间如何保持健康饮食？',
-      '孕期有哪些常见不适症状？',
-      '胎儿发育的关键阶段有哪些？',
-      '孕期需要补充哪些营养素？',
-      '如何缓解孕期腰痛？',
-      '孕期运动有哪些注意事项？',
-      '如何准备待产包？',
-      '产后恢复需要注意什么？',
-      '新生儿护理有哪些要点？'
-    ];
-    
-    // 随机选择3个问题
-    const randomQuestions = this.getRandomItems(defaultQuestions, 3);
-    
-    this.setData({
-      recommendedQuestions: randomQuestions
-    });
-  },
-  
-  // 从数组中随机获取指定数量的元素
-  getRandomItems: function(array, count) {
-    const shuffled = [...array].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  },
-  
-  // 格式化消息历史记录为API格式
-  formatMessagesForAPI: function(messages) {
-    return messages.map(msg => ({
-      role: msg.type === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }));
-  },
-  
-  // 处理AI响应
-  handleAIResponse: function(result) {
-    const { messages } = this.data;
-    
-    if (result && result.content) {
-      // 添加AI消息
-      const aiMessage = {
-        type: 'ai',
-        content: result.content,
-        time: new Date().toLocaleTimeString()
-      };
-      
-      this.setData({
-        messages: [...messages, aiMessage],
-        isLoading: false
-      });
-      
-      // 滚动到底部
-      this.scrollToBottom();
-      
-      // 生成新的推荐问题
-      this.generateRecommendedQuestions();
-    } else {
-      this.handleAIError();
-    }
-  },
-  
-  // 处理AI错误
-  handleAIError: function() {
-    const { messages } = this.data;
-    
-    // 添加错误消息
-    const errorMessage = {
-      type: 'ai',
-      content: '抱歉，我遇到了一些问题，请稍后再试。',
-      time: new Date().toLocaleTimeString()
-    };
-    
-    this.setData({
-      messages: [...messages, errorMessage],
-      isLoading: false
-    });
-    
-    // 滚动到底部
-    this.scrollToBottom();
-  },
-
-  // 登录成功回调
-  onLoginSuccess: function(userInfo) {
-    // 更新状态
-    appState.update({
-      'user.isLoggedIn': true,
-      'user.userInfo': userInfo
-    });
-    
-    this.setData({
-      showLoginModal: false
-    });
-  }
 }) 

@@ -23,8 +23,8 @@ const MODEL_CONFIG = {
 
 // 可用的模型选项
 const MODEL_OPTIONS = [
-  MODEL_CONFIG['DeepSeek-r1'],
-  MODEL_CONFIG['DeepSeek-v3']
+  MODEL_CONFIG['DeepSeek-v3'],
+  MODEL_CONFIG['DeepSeek-r1']
 ];
 
 /**

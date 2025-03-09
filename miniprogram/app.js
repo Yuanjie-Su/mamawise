@@ -11,10 +11,6 @@
  * 7. 组件层 (Components)：components目录下的自定义组件
  */
 
-// 导入状态管理模块
-import appState from './models/appState';
-import Logger from './utils/logger';
-
 // app.js
 App({
   onLaunch() {
@@ -29,9 +25,6 @@ App({
     logs.unshift(Date.now())
     wx.setStorageSync('logs', logs)
 
-    // 初始化应用状态
-    appState.initState();
-    
     // 获取用户登录状态
     this.checkLoginStatus()
   },
