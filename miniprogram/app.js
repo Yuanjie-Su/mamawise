@@ -16,8 +16,8 @@ App({
   onLaunch() {
     // 初始化云开发
     wx.cloud.init({
-      env: 'cloud1-3g8wu7ny156401ea', // 替换为你的云开发环境 ID
-      traceUser: true
+      env: wx.cloud.DYNAMIC_CURRENT_ENV, // 使用当前云环境
+      traceUser: true // 开启用户追踪
     })
 
     // 展示本地存储能力
@@ -29,22 +29,35 @@ App({
     this.checkLoginStatus()
   },
 
-  // 检查用户登录状态
+  /** 
+   * 使用云数据库验证用户登录状态
+   * 1. 检查本地缓存
+   * 2. 调用云函数验证OpenID有效性
+   */
   checkLoginStatus() {
     // 从本地存储获取用户信息
-    const userInfo = wx.getStorageSync('userInfo')
-    const hasUserInfo = !!userInfo
-    const hasPersonalInfo = wx.getStorageSync('hasPersonalInfo') || false
+    const cachedOpenid = wx.getStorageSync('openid')
+    if (!cachedOpenid) {
+      // 如果本地没有OpenID，调用云函数获取
+      this.getOpenidFromCloud()
+    } else {
+      // 如果本地有OpenID，验证它
+      this.validateOpenid(cachedOpenid)
 
-    // 更新全局数据
-    this.globalData.userInfo = userInfo || null
-    this.globalData.isLoggedIn = hasUserInfo
-    this.globalData.hasPersonalInfo = hasPersonalInfo
+    // // 从本地存储获取用户信息
+    // const userInfo = wx.getStorageSync('userInfo')
+    // const hasUserInfo = !!userInfo
+    // const hasPersonalInfo = wx.getStorageSync('hasPersonalInfo') || false
 
-    // 如果用户已登录且已完善个人信息，加载健康记录
-    if (hasUserInfo && hasPersonalInfo) {
-      this.loadHealthRecords()
-    }
+    // // 更新全局数据
+    // this.globalData.userInfo = userInfo || null
+    // this.globalData.isLoggedIn = hasUserInfo
+    // this.globalData.hasPersonalInfo = hasPersonalInfo
+
+    // // 如果用户已登录且已完善个人信息，加载健康记录
+    // if (hasUserInfo && hasPersonalInfo) {
+    //   this.loadHealthRecords()
+    // }
   },
 
   // 用户登录

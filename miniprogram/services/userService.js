@@ -45,25 +45,34 @@ function checkLoginStatus() {
  */
 function login() {
   return new Promise((resolve, reject) => {
+    wx.showLoading({ title: '登录中...' });
+    
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.LOGIN,
       success: (res) => {
         if (res.result && res.result.success) {
           // 登录成功，保存登录状态和用户信息
           wx.setStorageSync(STORAGE_KEYS.LOGIN_STATUS, true);
-          wx.setStorageSync(STORAGE_KEYS.USER_INFO, res.result.userInfo);
           
-          resolve({
-            isLoggedIn: true,
-            hasPersonalInfo: res.result.userInfo.hasPersonalInfo || false,
-            userInfo: res.result.userInfo
+          // 获取用户信息
+          getUserInfo().then(userInfo => {
+            resolve({
+              success: true,
+              userInfo
+            });
+          }).catch(err => {
+            reject(err);
+          }).finally(() => {
+            wx.hideLoading();
           });
         } else {
           // 登录失败
-          reject(new Error(res.result.message || '登录失败'));
+          wx.hideLoading();
+          reject(new Error(res.result.error || '登录失败'));
         }
       },
       fail: (err) => {
+        wx.hideLoading();
         Logger.error('登录失败', err);
         reject(err);
       }
@@ -73,14 +82,14 @@ function login() {
 
 /**
  * 获取用户健康记录
- * @returns {Promise<Object>} 健康记录对象
+ * @returns {Promise<Object>} 健康记录
  */
 function getHealthRecords() {
   return new Promise((resolve, reject) => {
     // 先检查本地缓存
-    const cachedHealthRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
-    if (cachedHealthRecords) {
-      resolve(cachedHealthRecords);
+    const cachedRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
+    if (cachedRecords) {
+      resolve(cachedRecords);
       return;
     }
     
@@ -88,14 +97,16 @@ function getHealthRecords() {
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.GET_HEALTH_RECORDS,
       success: (res) => {
+        // 获取成功，保存到本地缓存
         if (res.result && res.result.success) {
-          // 获取成功，保存到本地缓存
-          const healthRecords = res.result.healthRecords;
-          wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS, healthRecords);
+          const healthRecords = res.result.data;
+          if (healthRecords) {
+            wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS, healthRecords);
+          }
           resolve(healthRecords);
         } else {
           // 获取失败
-          reject(new Error(res.result.message || '获取健康记录失败'));
+          reject(new Error(res.result.error || '获取健康记录失败'));
         }
       },
       fail: (err) => {
@@ -107,16 +118,20 @@ function getHealthRecords() {
 }
 
 /**
- * 更新用户健康记录
+ * 更新健康记录
  * @param {Object} healthRecords - 健康记录对象
  * @returns {Promise<Object>} 更新结果
  */
 function updateHealthRecords(healthRecords) {
   return new Promise((resolve, reject) => {
+    wx.showLoading({ title: '保存中...' });
+    
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.UPDATE_HEALTH_RECORDS,
       data: { healthRecords },
       success: async (res) => {
+        wx.hideLoading();
+        
         if (res.result && res.result.success) {
           // 更新成功，更新本地缓存
           wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS, healthRecords);
@@ -128,7 +143,7 @@ function updateHealthRecords(healthRecords) {
             const additionalInfo = { solarTermInfo };
             
             // 异步生成个性化推荐问题，不阻塞主流程
-            aiService.generatePersonalizedQuestions(healthRecords, additionalInfo)
+            aiService.generatePersonalizedQuestions(healthRecords, additionalInfo, 8)
               .then(success => {
                 Logger.info('健康记录更新后生成个性化推荐问题', { success });
               })
@@ -142,11 +157,38 @@ function updateHealthRecords(healthRecords) {
           resolve(res.result);
         } else {
           // 更新失败
-          reject(new Error(res.result.message || '更新健康记录失败'));
+          reject(new Error(res.result.error || '更新健康记录失败'));
         }
       },
       fail: (err) => {
+        wx.hideLoading();
         Logger.error('更新健康记录失败', err);
+        reject(err);
+      }
+    });
+  });
+}
+
+/**
+ * 获取用户信息
+ * @returns {Promise<Object>} 用户信息
+ */
+function getUserInfo() {
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name: CLOUD_FUNCTIONS.GET_USER_INFO,
+      success: (res) => {
+        if (res.result && res.result.success) {
+          const userInfo = res.result.data;
+          // 保存到本地缓存
+          wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo);
+          resolve(userInfo);
+        } else {
+          reject(new Error(res.result.error || '获取用户信息失败'));
+        }
+      },
+      fail: (err) => {
+        Logger.error('获取用户信息失败', err);
         reject(err);
       }
     });
@@ -160,10 +202,14 @@ function updateHealthRecords(healthRecords) {
  */
 function updateUserInfo(userInfo) {
   return new Promise((resolve, reject) => {
+    wx.showLoading({ title: '保存中...' });
+    
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
       data: { userInfo },
       success: (res) => {
+        wx.hideLoading();
+        
         if (res.result && res.result.success) {
           // 更新成功，更新本地缓存
           const updatedUserInfo = {
@@ -176,10 +222,11 @@ function updateUserInfo(userInfo) {
           resolve(res.result);
         } else {
           // 更新失败
-          reject(new Error(res.result.message || '更新个人信息失败'));
+          reject(new Error(res.result.error || '更新个人信息失败'));
         }
       },
       fail: (err) => {
+        wx.hideLoading();
         Logger.error('更新个人信息失败', err);
         reject(err);
       }
@@ -188,17 +235,17 @@ function updateUserInfo(userInfo) {
 }
 
 /**
- * 退出登录
- * @returns {Promise<void>}
+ * 用户登出
+ * @returns {Promise<boolean>} 登出结果
  */
 function logout() {
   return new Promise((resolve) => {
-    // 清除登录状态和用户信息
-    wx.removeStorageSync(STORAGE_KEYS.LOGIN_STATUS);
+    // 清除本地存储中的用户信息和登录状态
     wx.removeStorageSync(STORAGE_KEYS.USER_INFO);
+    wx.removeStorageSync(STORAGE_KEYS.LOGIN_STATUS);
     wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
     
-    resolve();
+    resolve(true);
   });
 }
 
@@ -206,7 +253,8 @@ export default {
   checkLoginStatus,
   login,
   logout,
+  getUserInfo,
+  updateUserInfo,
   getHealthRecords,
-  updateHealthRecords,
-  updateUserInfo
+  updateHealthRecords
 }; 

@@ -1,0 +1,15 @@
+{
+  "name": "addChatHistory",
+  "version": "1.0.0",
+  "description": "添加聊天记录",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest",
+    "lodash": "^4.17.21" 
+  },
+  "author": "",
+  "license": "ISC"
+}

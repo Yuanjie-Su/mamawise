@@ -1,0 +1,37 @@
+{
+  "name": "favorites",
+  "description": "用户收藏的内容集合",
+  "properties": {
+    "_id": {
+      "description": "系统自动生成的唯一ID",
+      "type": "string"
+    },
+    "_openid": {
+      "description": "用户的微信openid",
+      "type": "string"
+    },
+    "title": {
+      "description": "收藏内容的标题",
+      "type": "string"
+    },
+    "content": {
+      "description": "收藏的具体内容",
+      "type": "string"
+    },
+    "createTime": {
+      "description": "创建时间",
+      "type": "date"
+    }
+  },
+  "required": ["_openid", "title", "content"],
+  "indexes": [
+    {
+      "name": "openid_time_index",
+      "fields": ["_openid", "createTime"]
+    }
+  ],
+  "permission": {
+    "read": "doc._openid == auth.openid",
+    "write": "doc._openid == auth.openid"
+  }
+} 

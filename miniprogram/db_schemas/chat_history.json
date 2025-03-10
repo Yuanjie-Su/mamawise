@@ -1,0 +1,37 @@
+{
+  "name": "chat_history",
+  "description": "用户与AI的聊天历史记录集合",
+  "properties": {
+    "_id": {
+      "description": "系统自动生成的唯一ID",
+      "type": "string"
+    },
+    "_openid": {
+      "description": "用户的微信openid",
+      "type": "string"
+    },
+    "userQuery": {
+      "description": "用户的问题",
+      "type": "string"
+    },
+    "aiResponse": {
+      "description": "AI的回答",
+      "type": "string"
+    },
+    "createTime": {
+      "description": "创建时间",
+      "type": "date"
+    }
+  },
+  "required": ["_openid", "userQuery", "aiResponse"],
+  "indexes": [
+    {
+      "name": "openid_time_index",
+      "fields": ["_openid", "createTime"]
+    }
+  ],
+  "permission": {
+    "read": "doc._openid == auth.openid",
+    "write": "doc._openid == auth.openid"
+  }
+} 
