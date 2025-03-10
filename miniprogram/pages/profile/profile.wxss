@@ -88,14 +88,6 @@
   line-height: 60rpx;
 }
 
-.quick-actions {
-  display: flex;
-  justify-content: space-around;
-  background-color: #FFFFFF;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-}
-
 .action-button {
   display: flex;
   flex-direction: column;

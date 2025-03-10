@@ -74,7 +74,7 @@
               <view class="action-btn share-btn" catchtap="shareMessage" data-content="{{item.content}}" data-index="{{index}}">
                 <image class="action-icon" src="/images/icons/share.png" mode="aspectFit"></image>
               </view>
-              <view class="action-btn favorite-btn" catchtap="toggleFavorite" data-content="{{item.content}}" data-id="{{item.id}}">
+              <view class="action-btn favorite-btn {{item.isFavorited ? 'disabled' : ''}}" catchtap="{{item.isFavorited ? '' : 'toggleFavorite'}}" data-content="{{item.content}}" data-id="{{item.id}}">
                 <image class="action-icon" src="{{item.isFavorited ? '/images/icons/favorited.png' : '/images/icons/favorite.png'}}" mode="aspectFit"></image>
               </view>
             </view>

@@ -560,39 +560,6 @@ Page({
     }
   },
   
-  // 导航到聊天页面
-  navigateToChat() {
-    wx.switchTab({
-      url: '/pages/chat/chat'
-    })
-  },
-  
-  // 导航到健康档案页面
-  navigateToRecords() {
-    // 如果未登录或未完善个人信息，提示用户
-    if (!this.data.hasUserInfo) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none'
-      })
-      return
-    }
-    
-    if (!this.data.hasPersonalInfo) {
-      wx.showToast({
-        title: '请先完善个人信息',
-        icon: 'none'
-      })
-      this.showPersonalInfoForm()
-      return
-    }
-    
-    // 导航到健康档案页面
-    wx.switchTab({
-      url: '/pages/records/records'
-    })
-  },
-  
   // 查看开发者工具
   viewDeveloperTools() {
     // 加载日志
@@ -853,5 +820,12 @@ Page({
       url: '/pages/settings/settings?tab=about'
     })
     Logger.debug('用户点击关于我们')
+  },
+
+  // 导航到设置页面
+  navigateToSettings() {
+    wx.navigateTo({
+      url: '/pages/settings/settings'
+    })
   },
 }) 

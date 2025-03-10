@@ -124,7 +124,7 @@ Page({
   async checkLoginStatus() {
     try {
       // 直接从本地存储获取登录状态
-      const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
+      const loginStatus = wx.getStorageSync('loginStatus') || false;
       
       this.setData({
         isLoggedIn: loginStatus
@@ -160,6 +160,12 @@ Page({
           healthRecords
         })
         Logger.debug('健康记录加载成功', healthRecords)
+        
+        // 根据健康记录生成个性化推荐问题
+        if (healthRecords) {
+          const additionalInfo = { solarTermInfo: this.data.solarTermInfo };
+          await aiService.generatePersonalizedQuestions(healthRecords, additionalInfo);
+        }
       } else {
         Logger.warn('未找到健康记录数据')
       }
@@ -274,8 +280,8 @@ Page({
         return;
       }
       
-      // 先生成新的推荐问题
-      const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
+      // 先生成新的推荐问题，传递上下文信息
+      const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages, contextInfo)
       this.setData({ recommendedQuestions })
       
       // 然后再设置isLoading为false并滚动到底部
@@ -652,9 +658,8 @@ Page({
 
   // 生成初始推荐问题
   generateInitialRecommendedQuestions() {
-    // 如果已经有消息历史，则基于历史生成推荐问题
-    // 否则生成默认推荐问题
-    aiService.generateRecommendedQuestions(this.data.messages).then(questions => {
+    // 直接生成默认推荐问题
+    aiService.getDefaultRecommendedQuestions().then(questions => {
       this.setData({
         recommendedQuestions: questions
       });
@@ -725,32 +730,32 @@ Page({
     const content = e.currentTarget.dataset.content;
     const messageId = e.currentTarget.dataset.id;
     
-    // 直接从本地存储获取登录状态
-    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
+    // // 直接从本地存储获取登录状态
+    // const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
     
-    // 检查用户是否已登录
-    if (!loginStatus) {
-      wx.showModal({
-        title: '提示',
-        content: '请先登录后再使用收藏功能',
-        confirmText: '去登录',
-        success: (res) => {
-          if (res.confirm) {
-            wx.navigateTo({
-              url: '/pages/login/login'
-            });
-          }
-        }
-      });
-      return;
-    }
+    // // 检查用户是否已登录
+    // if (!loginStatus) {
+    //   wx.showModal({
+    //     title: '提示',
+    //     content: '请先登录后再使用收藏功能',
+    //     confirmText: '去登录',
+    //     success: (res) => {
+    //       if (res.confirm) {
+    //         wx.navigateTo({
+    //           url: '/pages/login/login'
+    //         });
+    //       }
+    //     }
+    //   });
+    //   return;
+    // }
     
-    // 更新登录状态
-    if (this.data.isLoggedIn !== loginStatus) {
-      this.setData({
-        isLoggedIn: loginStatus
-      });
-    }
+    // // 更新登录状态
+    // if (this.data.isLoggedIn !== loginStatus) {
+    //   this.setData({
+    //     isLoggedIn: loginStatus
+    //   });
+    // }
     
     // 获取当前消息
     const messages = [...this.data.messages];
@@ -762,15 +767,14 @@ Page({
     
     // 如果消息已经收藏，则不再处理
     if (message.isFavorited) {
-      wx.showToast({
-        title: '已收藏',
-        icon: 'success',
-        duration: 1500
-      });
       return;
     }
     
     try {
+      // 立即设置为已收藏状态，禁用按钮
+      message.isFavorited = true;
+      this.setData({ messages });
+      
       // 获取当前时间作为收藏时间
       const now = new Date();
       const timestamp = now.toISOString();
@@ -779,78 +783,143 @@ Page({
       // 从本地存储获取收藏列表
       wx.getStorage({
         key: 'favorites',
-        success: (res) => {
+        success: async (res) => {
           let favorites = res.data || [];
           
-          // 创建新的收藏项
-          const newFavorite = {
-            id: Date.now().toString(), // 使用时间戳作为唯一ID
-            title: '收藏内容', // 默认标题
-            content: content,
-            date: formattedDate,
-            timestamp: timestamp,
-            messageId: messageId // 保存消息ID，用于标记已收藏的消息
-          };
-          
-          // 添加到收藏列表
-          favorites.push(newFavorite);
-          
-          // 更新本地存储
-          wx.setStorage({
-            key: 'favorites',
-            data: favorites,
-            success: () => {
-              wx.showToast({
-                title: '收藏成功',
-                icon: 'success'
-              });
-              
-              // 更新消息状态，显示已收藏图标
-              message.isFavorited = true;
-              this.setData({ messages });
-            },
-            fail: (err) => {
-              Logger.error('保存收藏失败', err);
-              wx.showToast({
-                title: '收藏失败',
-                icon: 'none'
-              });
-            }
-          });
+          try {
+            // 提取标题和内容
+            let title = '收藏内容'; // 默认标题
+            let contentProcessed = content;
+            
+            // 尝试提取标题（标题在后，内容在前，以---分割）
+            if (content.includes('---')) {
+              const parts = content.split('---');
+              if (parts.length >= 2) {
+                const possibleTitle = parts[parts.length - 1].trim();
+                if (possibleTitle && possibleTitle.length <= 50) {
+                  title = possibleTitle;
+                  // 移除最后一部分（标题部分）
+                  contentProcessed = parts.slice(0, parts.length - 1).join('---').trim();
+                }
+              }
+            } 
+            
+            Logger.info('提取的标题和内容', { title, contentLength: contentProcessed.length });
+
+            // 创建新的收藏项
+            const newFavorite = {
+              id: Date.now().toString(), // 使用时间戳作为唯一ID
+              title: title, // 使用提取的标题
+              content: contentProcessed, // 使用处理后的内容
+              date: formattedDate,
+              timestamp: timestamp,
+              messageId: messageId // 保存消息ID，用于标记已收藏的消息
+            };
+            
+            // 添加到收藏列表
+            favorites.push(newFavorite);
+            
+            // 更新本地存储
+            wx.setStorage({
+              key: 'favorites',
+              data: favorites,
+              success: () => {
+                wx.showToast({
+                  title: '收藏成功',
+                  icon: 'success'
+                });
+              },
+              fail: (err) => {
+                Logger.error('保存收藏失败', err);
+                wx.showToast({
+                  title: '收藏失败',
+                  icon: 'none'
+                });
+                
+                // 重置收藏状态
+                message.isFavorited = false;
+                this.setData({ messages });
+              }
+            });
+          } catch (error) {
+            Logger.error('处理收藏内容失败', error);
+            // 重置收藏状态
+            message.isFavorited = false;
+            this.setData({ messages });
+          }
         },
         fail: () => {
-          // 如果没有收藏数据，创建新的收藏列表
-          const favorites = [{
-            id: Date.now().toString(),
-            title: '收藏内容', // 默认标题
-            content: content,
-            date: formattedDate,
-            timestamp: timestamp,
-            messageId: messageId // 保存消息ID，用于标记已收藏的消息
-          }];
-          
-          // 保存到本地存储
-          wx.setStorage({
-            key: 'favorites',
-            data: favorites,
-            success: () => {
-              wx.showToast({
-                title: '收藏成功',
-                icon: 'success'
-              });
-              
-              // 更新消息状态，显示已收藏图标
-              message.isFavorited = true;
-              this.setData({ messages });
-            },
-            fail: (err) => {
-              Logger.error('保存收藏失败', err);
-              wx.showToast({
-                title: '收藏失败',
-                icon: 'none'
-              });
-            }
-          });
+          // 如果没有收藏列表
+          // 初始化收藏列表
+          let favorites = [];
+
+          // 处理收藏数据
+          try {
+            // 提取标题和内容
+            let title = '收藏内容'; // 默认标题
+            let contentProcessed = content;
+            
+            // 尝试提取标题（标题在后，内容在前，以---分割）
+            if (content.includes('---')) {
+              const parts = content.split('---');
+              if (parts.length >= 2) {
+                const possibleTitle = parts[parts.length - 1].trim();
+                if (possibleTitle && possibleTitle.length <= 50) {
+                  title = possibleTitle;
+                  // 移除最后一部分（标题部分）
+                  contentProcessed = parts.slice(0, parts.length - 1).join('---').trim();
+                }
+              }
+            } 
+            
+            Logger.info('提取的标题和内容', { title, contentLength: contentProcessed.length });
+
+            // 创建新的收藏项
+            const newFavorite = {
+              id: Date.now().toString(), // 使用时间戳作为唯一ID
+              title: title, // 使用提取的标题
+              content: contentProcessed, // 使用处理后的内容
+              date: formattedDate,
+              timestamp: timestamp,
+              messageId: messageId // 保存消息ID，用于标记已收藏的消息
+            };
+            
+            // 添加到收藏列表
+            favorites.push(newFavorite);
+            
+            // 更新本地存储
+            wx.setStorage({
+              key: 'favorites',
+              data: favorites,
+              success: () => {
+                wx.showToast({
+                  title: '收藏成功',
+                  icon: 'success'
+                });
+              },
+              fail: (err) => {
+                Logger.error('保存收藏失败', err);
+                wx.showToast({
+                  title: '收藏失败',
+                  icon: 'none'
+                });
+                
+                // 重置收藏状态
+                message.isFavorited = false;
+                this.setData({ messages });
+              }
+            });
+          } catch (error) {
+            Logger.error('处理收藏内容失败', error);
+            wx.showToast({
+              title: '收藏失败',
+              icon: 'none',
+              duration: 1500
+            });
+            // 重置收藏状态
+            message.isFavorited = false;
+            this.setData({ messages });
+          }
         }
       });
     } catch (error) {
@@ -860,6 +929,10 @@ Page({
         icon: 'none',
         duration: 1500
       });
+      
+      // 重置收藏状态
+      message.isFavorited = false;
+      this.setData({ messages });
     }
   },
   

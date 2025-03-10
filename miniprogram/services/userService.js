@@ -5,6 +5,7 @@
 
 import Logger from '../utils/logger';
 import appConfig from '../config/appConfig';
+import aiService from './aiService';
 
 const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
 
@@ -115,10 +116,29 @@ function updateHealthRecords(healthRecords) {
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.UPDATE_HEALTH_RECORDS,
       data: { healthRecords },
-      success: (res) => {
+      success: async (res) => {
         if (res.result && res.result.success) {
           // 更新成功，更新本地缓存
           wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS, healthRecords);
+          
+          // 根据健康记录生成个性化推荐问题
+          try {
+            // 获取当前节气信息
+            const solarTermInfo = wx.getStorageSync(STORAGE_KEYS.SOLAR_TERM_INFO) || '';
+            const additionalInfo = { solarTermInfo };
+            
+            // 异步生成个性化推荐问题，不阻塞主流程
+            aiService.generatePersonalizedQuestions(healthRecords, additionalInfo)
+              .then(success => {
+                Logger.info('健康记录更新后生成个性化推荐问题', { success });
+              })
+              .catch(err => {
+                Logger.error('健康记录更新后生成个性化推荐问题失败', err);
+              });
+          } catch (error) {
+            Logger.error('尝试生成个性化推荐问题失败', error);
+          }
+          
           resolve(res.result);
         } else {
           // 更新失败

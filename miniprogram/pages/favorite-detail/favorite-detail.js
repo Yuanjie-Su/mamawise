@@ -9,7 +9,14 @@ Page({
     favorite: null,
     id: null,
     isShared: false,
-    isLoading: true // 加载状态
+    isLoading: true, // 加载状态
+    editData: {
+      title: '',
+      content: ''
+    },
+    saveStatus: false, // 保存状态提示显示
+    saveStatusText: '已保存', // 保存状态文本
+    hasChanges: false // 是否有未保存的更改
   },
 
   /**
@@ -28,6 +35,31 @@ Page({
     
     // 加载收藏详情
     this.loadFavoriteDetail(id);
+    
+    // 设置导航栏返回按钮事件处理
+    wx.setNavigationBarTitle({
+      title: '收藏详情'
+    });
+  },
+  
+  /**
+   * 页面隐藏时保存内容（如切换到其他页面或小程序）
+   */
+  onHide: function() {
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+  },
+  
+  /**
+   * 页面卸载前保存内容
+   */
+  onUnload: function() {
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
   },
 
   /**
@@ -46,7 +78,13 @@ Page({
         if (favorite) {
           that.setData({
             favorite: favorite,
-            isLoading: false
+            isLoading: false,
+            // 初始化编辑数据
+            editData: {
+              title: favorite.title || '',
+              content: favorite.content || ''
+            },
+            hasChanges: false // 初始化时没有更改
           });
         } else {
           // 未找到收藏内容
@@ -70,8 +108,196 @@ Page({
    * 返回收藏列表
    */
   backToList: function () {
-    wx.navigateTo({
-      url: '/pages/favorites/favorites'
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    wx.navigateBack();
+  },
+  
+  /**
+   * 标题输入事件
+   */
+  onTitleInput: function(e) {
+    this.setData({
+      'editData.title': e.detail.value,
+      hasChanges: true // 标记有未保存的更改
     });
+  },
+  
+  /**
+   * 内容输入事件
+   */
+  onContentInput: function(e) {
+    this.setData({
+      'editData.content': e.detail.value,
+      hasChanges: true // 标记有未保存的更改
+    });
+  },
+  
+  /**
+   * 保存内容
+   * @param {Boolean} silent - 是否静默保存（不显示提示）
+   */
+  saveContent: function(silent = false) {
+    const that = this;
+    const { id, editData } = this.data;
+    
+    // 如果没有更改，则不需要保存
+    if (!this.data.hasChanges) {
+      return;
+    }
+    
+    // 如果不是静默保存，则显示保存状态
+    if (!silent) {
+      this.setData({
+        saveStatus: true,
+        saveStatusText: '正在保存...'
+      });
+    }
+    
+    // 从本地存储获取收藏列表
+    wx.getStorage({
+      key: 'favorites',
+      success: function(res) {
+        const favorites = res.data || [];
+        const index = favorites.findIndex(item => item.id === id);
+        
+        if (index !== -1) {
+          // 更新收藏内容
+          favorites[index].title = editData.title || '收藏内容';
+          favorites[index].content = editData.content;
+          
+          // 更新本地存储
+          wx.setStorage({
+            key: 'favorites',
+            data: favorites,
+            success: function() {
+              // 更新页面数据
+              that.setData({
+                favorite: favorites[index],
+                hasChanges: false // 重置更改标记
+              });
+              
+              if (!silent) {
+                // 显示保存成功状态
+                that.setData({
+                  saveStatusText: '已保存'
+                });
+                
+                // 3秒后隐藏保存状态
+                setTimeout(() => {
+                  that.setData({
+                    saveStatus: false
+                  });
+                }, 3000);
+              }
+              
+              Logger.info('保存成功', favorites[index]);
+            },
+            fail: function(err) {
+              if (!silent) {
+                that.setData({
+                  saveStatusText: '保存失败'
+                });
+              }
+              Logger.error('保存收藏失败', err);
+            }
+          });
+        } else {
+          if (!silent) {
+            that.setData({
+              saveStatusText: '保存失败：收藏不存在'
+            });
+          }
+        }
+      },
+      fail: function(err) {
+        if (!silent) {
+          that.setData({
+            saveStatusText: '保存失败'
+          });
+        }
+        Logger.error('获取收藏列表失败', err);
+      }
+    });
+  },
+  
+  /**
+   * 手动保存按钮点击事件
+   */
+  manualSave: function() {
+    this.saveContent(false);
+  },
+  
+  /**
+   * 分享收藏
+   */
+  shareFavorite: function() {
+    const { editData } = this.data;
+    
+    if (!editData) return;
+    
+    // 如果有未保存的更改，先保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    
+    wx.showActionSheet({
+      itemList: ['分享文本', '复制内容'],
+      success: (res) => {
+        switch (res.tapIndex) {
+          case 0: // 分享文本
+            wx.showShareMenu({
+              withShareTicket: true,
+              menus: ['shareAppMessage']
+            });
+            break;
+          case 1: // 复制内容
+            wx.setClipboardData({
+              data: `${editData.title}\n\n${editData.content}`,
+              success: () => {
+                wx.showToast({
+                  title: '已复制到剪贴板',
+                  icon: 'success'
+                });
+              }
+            });
+            break;
+        }
+      }
+    });
+  },
+  
+  /**
+   * 用户点击右上角分享
+   */
+  onShareAppMessage: function() {
+    const { editData } = this.data;
+    
+    // 如果有未保存的更改，先保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    
+    // 使用最新的编辑数据
+    const title = editData.title || '收藏内容';
+    
+    return {
+      title: title,
+      path: `/pages/favorite-detail/favorite-detail?id=${this.data.id}&shared=true`,
+      imageUrl: '/images/share-cover.png'
+    };
+  },
+  
+  /**
+   * 监听用户点击右上角返回按钮或物理返回键
+   */
+  onBackPress: function() {
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    return false; // 返回false，由系统执行返回逻辑
   }
 }); 

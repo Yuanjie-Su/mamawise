@@ -2,12 +2,17 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  height: 100vh;
   background-color: #f8f8f8;
+  overflow: hidden;
 }
 
 .content-container {
   padding: 30rpx;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* 加载中状态 */
@@ -45,6 +50,11 @@
   padding: 40rpx;
   margin-bottom: 40rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60rpx);
+  box-sizing: border-box;
 }
 
 .document-title {
@@ -73,35 +83,95 @@
 
 .action-buttons {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: space-around;
+  margin-top: 40rpx;
   gap: 20rpx;
 }
 
-.action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  border-radius: 44rpx;
-  font-size: 30rpx;
-  font-weight: normal;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+.action-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  margin: 0;
 }
 
-.action-button.delete {
-  background-color: #fff;
-  color: #ff4d4f;
-  border: 1rpx solid #ff4d4f;
+.edit-btn {
+  background-color: #E57B9E;
+  color: #fff;
 }
 
-.action-button.share {
+.share-btn {
   background-color: #1890ff;
   color: #fff;
 }
 
-.action-button.image {
+.cancel-btn {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.save-btn {
   background-color: #52c41a;
   color: #fff;
+}
+
+/* 编辑模式样式 */
+.content-card.editing {
+  padding: 30rpx;
+}
+
+.edit-field {
+  margin-bottom: 30rpx;
+}
+
+.field-label {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.title-input {
+  width: 100%;
+  height: 80rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  font-size: 32rpx;
+  background-color: #f9f9f9;
+}
+
+/* 文本区域容器 */
+.textarea-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 250rpx); /* 计算高度：视口高度减去标题和上下边距 */
+}
+
+/* 可编辑的内容样式 */
+.content-textarea {
+  width: 100%;
+  height: 100%; /* 占满容器高度 */
+  font-size: 32rpx;
+  color: #333;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.content-textarea:focus {
+  border: 1px dashed #E57B9E;
+  padding: 10rpx;
 }
 
 .button-icon {
@@ -137,4 +207,47 @@
   font-size: 28rpx;
   padding: 20rpx 40rpx;
   border-radius: 40rpx;
+}
+
+.back-btn {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+/* 保存状态提示 */
+.save-status {
+  position: fixed;
+  bottom: 40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 10rpx 30rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+}
+
+.save-status.show {
+  opacity: 1;
+}
+
+/* 可编辑的标题样式 */
+.document-title-input {
+  width: 100%;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 30rpx;
+  line-height: 1.4;
+  text-align: center;
+  border: none;
+  background-color: transparent;
+  padding: 0;
+}
+
+.document-title-input:focus {
+  border-bottom: 1px dashed #E57B9E;
 } 

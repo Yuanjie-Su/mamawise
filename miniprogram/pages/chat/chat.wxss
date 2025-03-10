@@ -384,6 +384,11 @@
   background-color: rgba(255, 255, 255, 0.8);
 }
 
+.action-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .action-icon {
   width: 32rpx;
   height: 32rpx;

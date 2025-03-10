@@ -7,10 +7,20 @@
       <text class="loading-text">加载中...</text>
     </view>
     
-    <!-- 文档内容 -->
+    <!-- 文档内容 - 可直接编辑的查看模式 -->
     <view class="content-card" wx:else>
-      <view class="document-title">{{favorite.title || '收藏内容'}}</view>
-      <text class="content-text">{{favorite.content}}</text>
+      <!-- 标题 - 可直接编辑 -->
+      <input class="document-title-input" value="{{editData.title}}" bindinput="onTitleInput" placeholder="请输入标题" />
+      
+      <!-- 内容 - 可直接编辑，占满底部区域 -->
+      <view class="textarea-container">
+        <textarea class="content-textarea" value="{{editData.content}}" bindinput="onContentInput" placeholder="请输入内容" maxlength="-1" auto-height="{{false}}" />
+      </view>
+      
+      <!-- 保存状态提示 -->
+      <view class="save-status {{saveStatus ? 'show' : ''}}">
+        <text>{{saveStatusText}}</text>
+      </view>
     </view>
   </view>
   
