@@ -117,7 +117,7 @@ async function generateAIResponse(messages, userQuery, contextInfo, onProgress) 
       throw new Error(`未找到模型配置: ${contextInfo.currentModel}`);
     }
 
-    // 创建DeepSeek模型实例
+    // 创建模型实例
     const model = wx.cloud.extend.AI.createModel('deepseek');
 
     // 使用流式响应
@@ -134,7 +134,7 @@ async function generateAIResponse(messages, userQuery, contextInfo, onProgress) 
       }
     });
 
-    // 处理DeepSeek模型的eventStream响应
+    // 处理eventStream响应
     for await (let event of res.eventStream) {
       // 如果生成已被停止，中断循环
       if (isGenerationStopped) {
@@ -148,11 +148,9 @@ async function generateAIResponse(messages, userQuery, contextInfo, onProgress) 
       const text = data?.choices?.[0]?.delta?.content;
 
       if (text && onProgress) {
-        // 对于deepseek-r1模型，处理开头的空白行问题
+        // 去除开头的空白行
         let processedText = text;
-
-        // 如果是deepseek-r1模型，且是第一次接收到内容，去除开头的空白行
-        if (modelConfig.apiModel === 'deepseek-r1' && !hasReceivedFirstContent) {
+        if (!hasReceivedFirstContent) {
           processedText = text.replace(/^\n+/, '');
           hasReceivedFirstContent = true;
         }
@@ -181,66 +179,30 @@ async function generateAIResponse(messages, userQuery, contextInfo, onProgress) 
  * @param {Number} questionCount - 需要生成的问题数量，默认为3
  * @returns {Promise<Array>} 返回推荐问题数组的Promise
  */
-async function generateRecommendedQuestions(messages, contextInfo = {}, questionCount = 3) {
+async function generateRecommendedQuestions(messages, prompt, questionCount = 3) {
   try {
-    // 检查是否有历史消息
-    const hasMessages = messages && messages.length > 0;
-    
-    // 检查是否有AI回复
-    const hasAIResponses = hasMessages && messages.some(msg => msg.type === 'system');
-    
-    // 根据不同情况构建不同的提示词
-    let prompt;
-    
-    // 添加用户健康记录信息（如果有）
-    const { isLoggedIn, hasPersonalInfo, healthRecords } = contextInfo || {};
-    
-    if (hasAIResponses) {
-      // 有历史AI回复的情况
-      prompt = `基于以下聊天历史和用户信息，生成${questionCount}个用户可能想继续问的问题。这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。只返回问题，每行一个，不要有编号或其他格式。\n\n`;
+    // 检查是否有聊天记录
+    if (messages.length > 0) {
+      // 有历史聊天记录的情况
+      prompt += `基于以下聊天历史，生成${questionCount}个用户可能想继续问的问题。
+      这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。
+      只返回问题，每行一个，不要有编号或其他格式。\n\n`;
       
       prompt += '聊天历史：\n';
       
       // 获取最近的5条消息作为上下文
-      const recentMessages = messages.slice(-5);
+      const recentMessages = messages.slice(-2);
       
       recentMessages.forEach(msg => {
         const role = msg.type === 'system' ? 'AI' : '用户';
         prompt += `${role}: ${msg.content}\n`;
       });
-      
-      prompt += `\n请基于上述聊天历史，生成${questionCount}个用户可能想继续问的问题，这些问题应该与最近的AI回复内容紧密相关。`;
     } else {
-      // 没有历史AI回复或没有任何消息的情况
-      prompt = `你是一位孕产妇健康顾问，请为用户生成${questionCount}个关于孕期健康、胎儿发育或产后护理的初始问题。这些问题应该对孕产妇有帮助，并且能够引导用户开始对话。只返回问题，每行一个，不要有编号或其他格式。\n\n`;
-      
-      if (isLoggedIn && hasPersonalInfo && healthRecords) {
-        prompt += `用户健康记录信息：\n`;
-        prompt += `- 预产期：${healthRecords.dueDate || '未知'}\n`;
-        prompt += `- 孕周：${healthRecords.pregnancyWeek || '未知'}\n`;
-        prompt += `- 身高：${healthRecords.height || '未知'} cm\n`;
-        prompt += `- 孕前体重：${healthRecords.prePregnancyWeight || '未知'} kg\n`;
-        prompt += `- 当前体重：${healthRecords.currentWeight || '未知'} kg\n\n`;
-        
-        // 针对有健康记录但没有聊天历史的情况，提供更具针对性的指导
-        prompt += `请基于用户的健康记录，特别是孕周（${healthRecords.pregnancyWeek || '未知'}）和预产期（${healthRecords.dueDate || '未知'}），生成最相关的问题。如果用户处于孕早期，关注孕吐、营养补充等；孕中期关注胎动、产检等；孕晚期关注临产准备、分娩方式等；产后关注恢复、哺乳等。\n\n`;
-      } else {
-        // 没有健康记录的情况
-        prompt += '由于没有用户的具体健康记录，请生成适用于各个孕期阶段的通用问题，涵盖孕早期、孕中期、孕晚期和产后的常见关注点。\n\n';
-      }
-      
-      // 如果有用户消息但没有AI回复，可能是用户刚刚提问
-      if (hasMessages) {
-        prompt += '用户最近的问题：\n';
-        const userMessages = messages.filter(msg => msg.type === 'user').slice(-2);
-        userMessages.forEach(msg => {
-          prompt += `用户: ${msg.content}\n`;
-        });
-        prompt += `\n请基于用户的问题，生成${questionCount}个相关的后续问题。`;
-      }
+      // 没有聊天记录的情况
+      prompt = `请为用户生成${questionCount}个关于孕期健康、胎儿发育或产后护理的初始问题。
+      这些问题应该对孕产妇有帮助，并且能够引导用户开始对话。
+      只返回问题，每行一个，不要有编号或其他格式。\n\n`;
     }
-
-    Logger.info('生成推荐问题的提示词', { promptLength: prompt.length, hasAIResponses, questionCount });
 
     // 使用当前选择的模型生成推荐问题
     const model = wx.cloud.extend.AI.createModel("deepseek");
@@ -257,6 +219,7 @@ async function generateRecommendedQuestions(messages, contextInfo = {}, question
 
       // 如果生成的问题数量不足，从默认问题中补充
       if (questions.length < questionCount) {
+        Logger.info('生成的问题数量不足，从默认问题中补充');
         const defaultQuestions = getDefaultQuestions();
         const additionalQuestions = getRandomItems(
           defaultQuestions.filter(q => !questions.includes(q)), 
@@ -268,6 +231,7 @@ async function generateRecommendedQuestions(messages, contextInfo = {}, question
       // 如果生成的问题数量超过需要的数量，只返回需要的数量
       return questions.slice(0, questionCount);
     } else {
+      Logger.info('模型API调用失败，使用默认问题');
       // 如果API调用失败，使用默认问题
       return getDefaultRecommendedQuestions(contextInfo, questionCount);
     }

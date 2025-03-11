@@ -1,86 +1,70 @@
-/*
-微信云开发平台提供的数据库，users集合
-{
-  "name": "users",
-  "description": "用户信息集合",
-  "properties": {
-    "_id": {
-      "description": "系统自动生成的唯一ID",
-      "type": "string"
-    },
-    "_openid": {
-      "description": "用户的微信openid",
-      "type": "string"
-    },
-    "nickName": {
-      "description": "用户昵称",
-      "type": "string"
-    },
-    "avatarUrl": {
-      "description": "头像URL",
-      "type": "string"
-    }
-  },
-  "required": ["_openid"],
-  "indexes": [
-    {
-      "name": "openid_index",
-      "unique": true,
-      "fields": ["_openid"]
-    }
-  ],
-  "permission": {
-    "read": "doc._openid == auth.openid",
-    "write": "doc._openid == auth.openid"
-  }
-} 
-*/
+// 登录，输入示例
+// {
+//   "code": "00111111111111111111111111111111"
+//   "userInfo": {
+//     "nickName": "张三",
+//     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
+//   }
+// }
+// 数据库中没有_openid对应的记录，返回传入的userInfo；否则返回数据库中的userInfo
+// 返回示例
+// {
+//   "success": true,
+//   "userInfo": {
+//     "nickName": "张三",
+//     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
+//   }
+//   "error": null
+// }
 
-// 登录
-
-// 云函数入口文件
 const cloud = require('wx-server-sdk')
 
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 
-// 云函数入口函数
 exports.main = async (event, context) => {
-  const { code, userInfo } = event
-  
   try {
-    // 用code换取OpenID
-    const loginRes = await cloud.openapi.login({ code });
-    const openid = loginRes.openid;
-    
-    // 查询用户是否已存在
+    const loginRes = await cloud.openapi.login(event.code)
+    if (!loginRes || !loginRes.openid) {
+      throw new Error('登录失败：无效的code参数')
+    }
+    const openid = loginRes.openid
+
+    // 权限校验中间件
+    if (context.auth && context.auth.openid !== openid) {
+      throw new Error('权限不足：只能操作自己的数据')
+    }
+
     const userCollection = db.collection('users')
-    
-    // 查询用户是否已存在
+
     const user = await userCollection.where({
       _openid: openid
     }).get()
-    
+
     if (user.data.length === 0) {
-      // 用户不存在，创建新用户 
+      // 用户不存在，创建新用户
       await userCollection.add({
         data: {
           _openid: openid,
-          nickName: userInfo.nickName,
-          avatarUrl: userInfo.avatarUrl
+          nickName: event.userInfo.nickName,
+          avatarUrl: event.userInfo.avatarUrl,
         }
       })
     }
 
+    const userInfo = user.data[0]
+
     return {
       success: true,
+      userInfo: userInfo,
       error: null
     }
   } catch (error) {
     return {
       success: false,
-      error: error
+      userInfo: null,
+      error: error.message || '未知错误'
     }
   }
-} 
+}

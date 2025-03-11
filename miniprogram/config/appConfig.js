@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
   HEALTH_RECORDS: 'healthRecords',
   HAS_HEALTH_RECORDS: 'hasHealthRecords',
   CURRENT_MODEL: 'currentModel',
-  CHAT_HISTORY: 'chatHistory'
+  CHAT_HISTORY: 'chatHistory',
 };
 
 // API配置
@@ -27,7 +27,8 @@ const CLOUD_FUNCTIONS = {
   UPDATE_USER_INFO: 'updateUserInfo',
   GET_HEALTH_RECORDS: 'getHealthRecords',
   UPDATE_HEALTH_RECORDS: 'updateHealthRecords',
-  GENERATE_TEXT: 'generateText'
+  GET_CHAT_HISTORY: 'getChatHistory',
+  GET_PROMPT: 'getPrompt',
 };
 
 // 默认配置
@@ -48,10 +49,34 @@ const DEFAULT_CONFIG = {
   ]
 };
 
+// AI模型配置
+const MODEL_CONFIG = {
+  'DeepSeek-v3': {
+    id: 'DeepSeek-v3',
+    name: 'DeepSeek-v3',
+    apiModel: 'deepseek-v3',
+    description: '通用性混合专家'
+  },
+  'DeepSeek-r1': {
+    id: 'DeepSeek-r1',
+    name: 'DeepSeek-r1',
+    apiModel: 'deepseek-r1',
+    description: '专注于复杂推理任务'
+  }
+};
+
+// 可用的AI模型选项
+const MODEL_OPTIONS = [
+  MODEL_CONFIG['DeepSeek-v3'],
+  MODEL_CONFIG['DeepSeek-r1']
+];
+
 export default {
   APP_VERSION,
   STORAGE_KEYS,
   API_CONFIG,
   CLOUD_FUNCTIONS,
-  DEFAULT_CONFIG
+  DEFAULT_CONFIG,
+  MODEL_CONFIG,
+  MODEL_OPTIONS
 }; 

@@ -13,13 +13,18 @@
       "type": "string",
       "default": "system-generated"
     },
+    "model_name": {
+      "description": "AI模型名称",
+      "type": "string",
+      "default": "DeepSeek-v3"
+    },
     "lists": {
       "description": "messages列表,object数组",
       "type": "array",
       "default": []
     }
   },
-  "required": ["_openid", "userQuery", "aiResponse"],
+  "required": ["_openid"],
   "indexes": [
     {
       "name": "openid_index",
@@ -32,14 +37,16 @@
   }
 } 
 */
-// 获取聊天记录，即获取 lists属性中所有对象
-// 返回lists属性中所有对象  
+// 获取聊天记录
+// 返回lists属性和model_name属性
 
 const cloud = require('wx-server-sdk')
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 })
+
+const db = cloud.database()
 
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
@@ -50,7 +57,10 @@ exports.main = async (event, context) => {
     _openid: _openid
   }).get()
 
-  // 返回lists属性中所有对象
-  return result.data[0].lists
+  // 返回lists属性和model_name属性
+  return {
+    lists: result.data[0].lists,
+    model_name: result.data[0].model_name
+  }
 }
 

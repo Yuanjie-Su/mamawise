@@ -25,23 +25,17 @@ App({
       traceUser: true // 开启用户追踪
     })
 
-    // 展示本地存储能力
-    const logs = wx.getStorageSync('logs') || []
-    logs.unshift(Date.now())
-    wx.setStorageSync('logs', logs)
-
-    // 获取用户登录状态
-    this.checkLoginStatus()
+    // 设置全局数据
+    this.setGlobalData()
   },
 
   /** 
-   * 检查本地缓存
+   * 设置全局数据
    */
-  checkLoginStatus() {
-    // 从本地存储获取用户信息
-    const userInfo = wx.getStorageSync(STORAGE_KEYS.USER_INFO)
-    this.globalData.userInfo = userInfo
-    this.globalData.loginStatus = !!userInfo
+  setGlobalData() {
+    // 从本地存储获取用户登录状态
+    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS)
+    this.globalData.loginStatus = loginStatus
 
     // 从本地存储获取健康记录
     const healthRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS)
@@ -50,7 +44,6 @@ App({
   },
 
   globalData: {
-    userInfo: null,
     loginStatus: false,
     hasHealthRecords: false,
     healthRecords: null,

@@ -5,7 +5,6 @@
 
 import Logger from '../utils/logger';
 import appConfig from '../config/appConfig';
-// import aiService from './aiService';
 
 const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
 
@@ -24,7 +23,7 @@ function login(code, userInfo) {
         code: code,
         userInfo: userInfo
       }
-    }).then(res => {
+    }).then(async (res) => {
       wx.hideLoading();
 
       // 验证返回数据格式
@@ -75,39 +74,31 @@ function getUserInfo() {
 
 /**
  * 更新用户个人信息
- * @param {Object} userInfo - 用户个人信息
+ * @param {Object} 指定属性的名称和值
  * @returns {Promise<Object>} 更新结果
  */
-function updateUserInfo(userInfo) {
+function updateUserInfo(property, value ) {
   return new Promise((resolve, reject) => {
-    wx.showLoading({ title: '保存中...' });
-    
     wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-      data: { userInfo },
-      success: (res) => {
-        wx.hideLoading();
-        
-        if (res.result && res.result.success) {
-          // 更新成功，更新本地缓存
-          const updatedUserInfo = {
-            ...wx.getStorageSync(STORAGE_KEYS.USER_INFO),
-            ...userInfo,
-            hasPersonalInfo: true
-          };
-          
-          wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo);
-          resolve(res.result);
-        } else {
-          // 更新失败
-          reject(new Error(res.result.error || '更新个人信息失败'));
-        }
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        Logger.error('更新个人信息失败', err);
-        reject(err);
+      data: { property, value }
+    }).then(async (res) => {
+      if (!res || !res.result) {
+        reject(new Error('无效更新响应'));
+        return;
       }
+
+      const { success, error } = res.result;    
+      
+      if (success) {
+        resolve(res.result);
+      } else {
+        console.log('更新失败', error)
+        reject(new Error(error || '更新失败'));
+      }
+    }).catch(err => {
+      console.log('userService 异常', err)
+      reject(err);
     });
   });
 }
@@ -128,9 +119,28 @@ function logout() {
   });
 }
 
+/**
+ * 获取提示词
+ * @returns {Promise<Object>} 提示词
+ */
+function getPrompt() {
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name: CLOUD_FUNCTIONS.GET_PROMPT,
+      success: (res) => {
+        resolve(res.result);
+      },
+      fail: (err) => {
+        reject(err);
+      }
+    });
+  });
+}
+
 export default {
   login,
   logout,
   getUserInfo,
-  updateUserInfo
+  updateUserInfo,
+  getPrompt
 }; 

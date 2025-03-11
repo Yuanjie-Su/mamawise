@@ -1,7 +1,9 @@
 const app = getApp()
 import Logger from '../../utils/logger'
+import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
-import userService from '../../services/userService'
+
+const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
 
 Page({
   data: {
@@ -45,7 +47,7 @@ Page({
 
     // 加载用户信息
     this.setData({
-      userInfo: app.globalData.userInfo,
+      userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO),
       loginStatus: app.globalData.loginStatus
     })
 
@@ -99,32 +101,45 @@ Page({
         // 调用登录API
         wx.login({
           success: (loginRes) => {
-            // 调用登录服务
-            userService.login(loginRes.code, userInfo)
-              .then(res => {
-                if (res.success) {
-                  Logger.info('登录成功');
-                  app.globalData.userInfo = userInfo
-                  app.globalData.loginStatus = true
-                  this.setData({
-                    userInfo: userInfo,
-                    loginStatus: true
-                  });
-                } else {
-                  Logger.error('登录失败', res.error);
-                  wx.showToast({
-                    title: '登录失败，请重试',
-                    icon: 'none'
-                  });
-                }
-              })
-              .catch(err => {
-                Logger.error('登录失败', err);
+            wx.showLoading({ title: '登录中...' });
+            // 调用云函数
+            wx.cloud.callFunction({
+              name: CLOUD_FUNCTIONS.LOGIN,
+              data: {
+                code: loginRes.code,
+                userInfo: userInfo
+              }
+            }).then(async (res) => {
+              wx.hideLoading();
+
+              // 验证返回数据格式
+              if (!res || !res.result) {
+                reject(new Error('无效登录响应'));
+                return;
+              }
+
+              const { success, userInfo, error } = res.result;
+
+              if (success) {
+                // 更新本地状态
+                this.setData({
+                  userInfo: userInfo,
+                  loginStatus: true
+                });
+
+                wx.setStorageSync('userInfo', userInfo)
+                wx.setStorageSync('loginStatus', true)
+
+                app.globalData.loginStatus = true
+                Logger.info('登录成功');
+              } else {
+                Logger.error('登录失败', error);
                 wx.showToast({
                   title: '登录失败，请重试',
                   icon: 'none'
                 });
-              })
+              }
+            })
           }
         })
       }
@@ -132,33 +147,81 @@ Page({
   },
 
   // 用户登出
-  async logout() {
+  logout() {
     wx.showModal({
       title: '提示',
       content: '确定要退出登录吗？',
-      success: async (res) => {
+      success: res => {
         if (res.confirm) {
-          try {
-            // 调用服务登出方法
-            await userService.logout();
+          // 清除本地存储中的用户信息和登录状态
+          wx.removeStorageSync(STORAGE_KEYS.USER_INFO);
+          wx.removeStorageSync(STORAGE_KEYS.LOGIN_STATUS);
+          wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
+          wx.removeStorageSync(STORAGE_KEYS.HAS_HEALTH_RECORDS);
 
-            // 更新本地状态
-            this.setData({
-              userInfo: {},
-              loginStatus: false
-            });
+          // 更新本地状态
+          this.setData({
+            userInfo: {},
+            loginStatus: false
+          });
 
-            Logger.info('用户登出成功');
-          } catch (error) {
-            Logger.error('用户登出失败', error);
-            wx.showToast({
-              title: '登出失败，请重试',
-              icon: 'none'
-            });
-          }
+          Logger.info('用户登出成功');
         }
       }
     });
+  },
+
+  editNickname() {
+    wx.showModal({
+      title: '修改昵称',
+      editable: true,
+      placeholderText: this.data.userInfo.nickName,
+      success: async (res) => {
+        if (res.confirm) {
+          const newNickname = res.content
+
+          // 调用云函数
+          wx.cloud.callFunction({
+            name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
+            data: {
+              property: 'nickName',
+              value: newNickname
+            }
+          }).then(res => {
+            if (!res || !res.result) {
+              reject(new Error('无效更新响应'));
+              return;
+            }
+
+            const { success, error } = res.result;
+
+            if (success) {
+              this.setData({
+                userInfo: {
+                  nickName: newNickname,
+                  avatarUrl: this.data.userInfo.avatarUrl
+                }
+              });
+
+              wx.setStorageSync('userInfo', this.data.userInfo)
+              Logger.info('昵称修改成功');
+            } else {
+              Logger.error('更新失败', error);
+              wx.showToast({
+                title: '修改失败，请重试',
+                icon: 'none'
+              });
+            }
+          }).catch(err => {
+            Logger.error('更新失败', err);
+            wx.showToast({
+              title: '修改失败，请重试',
+              icon: 'none'
+            });
+          })
+        }
+      }
+    })
   },
 
   // 初始化日历数据

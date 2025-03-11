@@ -7,8 +7,7 @@ import messageModel from '../../models/messageModel'
 import appConfig from '../../config/appConfig'
 import markdownUtil from '../../utils/markdownUtil'
 
-const { STORAGE_KEYS } = appConfig
-const { MODEL_CONFIG, MODEL_OPTIONS } = aiService
+const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS } = appConfig
 
 Page({
   data: {
@@ -26,6 +25,8 @@ Page({
     loadingMessageId: null,
     // 要滚动到的消息的标识，用于定位到特定消息
     scrollToMessage: '', 
+    // 提示词
+    prompt: {},
     // 推荐问题列表，显示在页面上供用户快速选择提问，每次随机生成3个符合语境的问题
     recommendedQuestions: [
       '健康饮食有什么建议？',
@@ -54,115 +55,68 @@ Page({
     isGeneratingStopped: false
   },
 
-  onLoad() {
+  async onLoad() {
     Logger.debug('聊天页面加载')
     
-    // 初始化当前模型名称
-    this.initCurrentModelName()
-    
-    // 检查当前选择的模型是否有效
-    this.validateCurrentModel()
-    
-    // 从本地存储中恢复上次使用的模型（如果有）
-    this.restoreLastUsedModel()
-    
-    // 直接从本地存储获取登录状态
-    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
-    
-    // 更新登录状态
-    this.setData({
-      isLoggedIn: loginStatus
-    });
-    
-    // 加载聊天记录
-    this.loadChatHistory()
-    
-    // 生成推荐问题
-    this.generateInitialRecommendedQuestions()
-  },
-  
-  onShow() {
-    // 直接从本地存储获取登录状态
-    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
-    
-    // 更新登录状态
-    this.setData({
-      isLoggedIn: loginStatus
-    });
-    
-    // 如果用户已登录，更新消息的收藏状态
-    if (loginStatus && this.data.messages && this.data.messages.length > 0) {
-      this.checkFavoritedMessages(this.data.messages);
-    }
-  },
-  
-  // 初始化当前模型名称
-  initCurrentModelName() {
-    try {
-      const { currentModel, modelOptions } = this.data
-      if (modelOptions && modelOptions.length > 0) {
-        const modelConfig = modelOptions.find(option => option.id === currentModel)
-        if (modelConfig) {
-          this.setData({ currentModelName: modelConfig.name })
-        }
-      }
-    } catch (error) {
-      Logger.error('初始化当前模型名称时出错:', error)
-    }
-  },
-  
-  // 检查用户登录状态和个人信息
-  async checkLoginStatus() {
-    try {
-      // 直接从本地存储获取登录状态
-      const loginStatus = wx.getStorageSync('loginStatus') || false;
-      
+    // 判断是否已登录
+    if (app.globalData.loginStatus) {
       this.setData({
-        isLoggedIn: loginStatus
-      });
-      
-      // 如果用户已登录，加载健康记录
-      if (loginStatus) {
-        this.loadHealthRecords();
-        
-        // 更新消息的收藏状态
-        if (this.data.messages && this.data.messages.length > 0) {
-          this.checkFavoritedMessages(this.data.messages);
-          // 更新UI
-          this.setData({
-            messages: this.data.messages
-          });
-        }
-      }
-      
-      return loginStatus;
-    } catch (error) {
-      Logger.error('检查登录状态失败', error);
-      return false;
+        isLoggedIn: true
+      })
+      // 并发执行
+    await Promise.all([
+      // 加载聊天记录
+      this.loadChatHistory(),
+      // 获取提示词
+      this.loadPrompt()
+    ])
+    } else {
+      this.setData({
+        isLoggedIn: false
+      })
+      return
     }
+
+    // 获取推荐问题
+    this.getRecommendedQuestions(this.data.messages
+      , this.data.prompt['recommended_questions'])
   },
   
-  // 加载健康记录
-  async loadHealthRecords() {
-    try {
-      if (this.data.isLoggedIn) {
-        const healthRecords = await userService.getHealthRecords()
-        this.setData({
-          healthRecords
-        })
-        Logger.debug('健康记录加载成功', healthRecords)
-        
-        // 根据健康记录生成个性化推荐问题
-        if (healthRecords) {
-          const additionalInfo = {};
-          await aiService.generatePersonalizedQuestions(healthRecords, additionalInfo);
-        }
-      } else {
-        Logger.warn('未找到健康记录数据')
-      }
-    } catch (error) {
-      Logger.error('加载健康记录失败', error)
+  async onShow() {
+    // 判断是否已登录
+    if (app.globalData.loginStatus) {
+      this.setData({
+        isLoggedIn: true
+      })
+      // 并发执行
+    await Promise.all([
+      // 加载聊天记录
+      this.loadChatHistory(),
+      // 获取提示词
+      this.loadPrompt()
+    ])
+    } else {
+      this.setData({
+        isLoggedIn: false
+      })
+      return
     }
+  },
+
+  // 加载提示词
+  async loadPrompt() {
+    const prompt = await userService.getPrompt()
+    this.setData({
+      prompt: prompt
+    })
+  },
+
+  // 获取推荐问题
+  async getRecommendedQuestions(messages, prompt) {
+    const recommendedQuestions = await aiService.generateRecommendedQuestions(messages, prompt)
+    this.setData({
+      recommendedQuestions: recommendedQuestions
+    })
   },
 
   onInputChange(e) {
@@ -445,40 +399,6 @@ Page({
     }
   },
 
-  // 验证当前选择的模型是否有效
-  validateCurrentModel() {
-    try {
-      const { currentModel } = this.data
-      
-      // 检查当前模型是否存在于配置中
-      const modelConfig = MODEL_CONFIG[currentModel]
-      
-      if (!modelConfig) {
-        // 如果当前模型不存在于配置中，则切换到第一个可用的模型
-        const modelIds = Object.keys(MODEL_CONFIG)
-        if (modelIds.length > 0) {
-          const defaultModelId = modelIds[0]
-          const defaultModel = MODEL_CONFIG[defaultModelId]
-          this.setData({ 
-            currentModel: defaultModelId,
-            currentModelName: defaultModel.name
-          })
-          Logger.info(`当前模型无效，已切换至默认模型: ${defaultModelId}`)
-        } else {
-          Logger.error('模型配置为空')
-        }
-      } else {
-        // 确保currentModelName与当前模型匹配
-        if (this.data.currentModelName !== modelConfig.name) {
-          this.setData({ currentModelName: modelConfig.name })
-        }
-        Logger.info(`当前使用模型: ${currentModel} (${modelConfig.name})`)
-      }
-    } catch (error) {
-      Logger.error('验证模型时出错:', error)
-    }
-  },
-
   // 关闭模型选择器
   closeModelSelector() {
     if (this.data.showModelSelector) {
@@ -494,20 +414,19 @@ Page({
     return;
   },
 
-  // 从本地存储中恢复上次使用的模型
+  // 恢复上次使用的模型
   restoreLastUsedModel() {
-    try {
-      const lastUsedModel = wx.getStorageSync('lastUsedModel')
-      if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
-        const modelConfig = MODEL_CONFIG[lastUsedModel]
-        this.setData({ 
-          currentModel: lastUsedModel,
-          currentModelName: modelConfig.name
-        })
-        Logger.info(`已恢复上次使用的模型: ${lastUsedModel} (${modelConfig.name})`)
-      }
-    } catch (error) {
-      Logger.error('恢复上次使用的模型时出错:', error)
+    // 判断本地存储中是否存在lastUsedModel
+    const lastUsedModel = wx.getStorageSync('lastUsedModel')
+    if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
+      const modelConfig = MODEL_CONFIG[lastUsedModel]
+      this.setData({ 
+        currentModel: lastUsedModel,
+        currentModelName: modelConfig.name
+      })
+      Logger.info(`已恢复上次使用的模型: ${lastUsedModel} (${modelConfig.name})`)
+    } else {
+      Logger.info('本地存储中不存在lastUsedModel')
     }
   },
 
@@ -522,22 +441,30 @@ Page({
   // 加载聊天记录
   async loadChatHistory() {
     try {
-      const messages = await chatService.loadChatHistory();
-      
-      if (messages && messages.length > 0) {
-        // 检查消息是否已收藏
-        this.checkFavoritedMessages(messages);
-        
-        this.setData({
-          messages
-        });
-        
-        // 滚动到底部
-        this.scrollToBottom();
-      }
+      const res = await wx.cloud.callFunction({
+        name: CLOUD_FUNCTIONS.GET_CHAT_HISTORY
+      })
+      this.setData({
+        messages: res.result.lists,
+        currentModel: res.result.model_name
+      })
+      // 确保数据加载完成后再滚动到底部
+      this.scrollToBottom()
     } catch (error) {
-      Logger.error('加载聊天历史失败', error);
+      Logger.error('加载聊天记录失败:', error)
+      this.showErrorToast('聊天记录加载异常')
     }
+  },
+
+  // 获取提示词
+  async getPrompt() {
+    const res = await wx.cloud.callFunction({
+      name: CLOUD_FUNCTIONS.GET_PROMPT,
+      data: {
+        prompt_type: 'chat'
+      }
+    })  
+    this.setData({ prompt: res.result })
   },
   
   // 检查消息是否已收藏
@@ -633,16 +560,6 @@ Page({
     
     // 生成新的推荐问题
     aiService.generateRecommendedQuestions(this.data.messages).then(questions => {
-      this.setData({
-        recommendedQuestions: questions
-      });
-    });
-  },
-
-  // 生成初始推荐问题
-  generateInitialRecommendedQuestions() {
-    // 直接生成默认推荐问题
-    aiService.getDefaultRecommendedQuestions().then(questions => {
       this.setData({
         recommendedQuestions: questions
       });

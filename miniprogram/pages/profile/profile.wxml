@@ -5,7 +5,12 @@
     <view class="user-info">
       <image class="user-avatar" src="{{loginStatus ? userInfo.avatarUrl : '/images/default_avatar.png'}}"></image>
       <view class="user-details">
-        <text class="username" wx:if="{{loginStatus}}">{{userInfo.nickName}}</text>
+        <view class="username-container" wx:if="{{loginStatus}}">
+          <text class="username">{{userInfo.nickName}}</text>
+          <view class="edit-nickname-btn" bindtap="editNickname">
+            <image class="edit-icon" src="/images/icons/userinfo_edit.png" mode="aspectFit"></image>
+          </view>
+        </view>
         <text class="username" wx:else>未登录</text>
         <text class="user-desc" wx:if="{{!loginStatus}}">登录后可使用更多功能</text>
       </view>
