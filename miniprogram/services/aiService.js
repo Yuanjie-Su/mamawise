@@ -59,7 +59,7 @@ const MODEL_OPTIONS = [
  * @returns {String} 系统提示词
  */
 function buildSystemPrompt(params) {
-  const { isLoggedIn, hasPersonalInfo, healthRecords, solarTermInfo } = params;
+  const { isLoggedIn, hasPersonalInfo, healthRecords } = params;
 
   let systemPrompt = `你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。
 请以友善、专业的语气回答用户的问题，避免过于冰冷或机械的回复。
@@ -69,20 +69,6 @@ function buildSystemPrompt(params) {
 正文不需要包含任何打招呼语句（如"您好"、"亲爱的准妈妈"等），需要通过表情元素润色，结构清晰，不能有MarkDown元素。
 标题简短（不超过20个字）。
 `;
-
-  if (solarTermInfo) {
-    systemPrompt += `\n当前节气：${solarTermInfo}。`;
-  }
-
-  // 添加用户健康记录信息
-  if (isLoggedIn && hasPersonalInfo && healthRecords) {
-    systemPrompt += `\n\n用户健康记录信息：
-- 预产期：${healthRecords.dueDate || '未知'}
-- 孕周：${healthRecords.pregnancyWeek || '未知'}
-- 身高：${healthRecords.height || '未知'} cm
-- 孕前体重：${healthRecords.prePregnancyWeight || '未知'} kg
-- 当前体重：${healthRecords.currentWeight || '未知'} kg`;
-  }
 
   // 格式要求
   systemPrompt += `\n\n回复格式要求：
@@ -207,25 +193,11 @@ async function generateRecommendedQuestions(messages, contextInfo = {}, question
     let prompt;
     
     // 添加用户健康记录信息（如果有）
-    const { isLoggedIn, hasPersonalInfo, healthRecords, solarTermInfo } = contextInfo || {};
+    const { isLoggedIn, hasPersonalInfo, healthRecords } = contextInfo || {};
     
     if (hasAIResponses) {
       // 有历史AI回复的情况
       prompt = `基于以下聊天历史和用户信息，生成${questionCount}个用户可能想继续问的问题。这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。只返回问题，每行一个，不要有编号或其他格式。\n\n`;
-      
-      // 添加用户健康记录信息
-      if (solarTermInfo) {
-        prompt += `当前节气：${solarTermInfo}\n\n`;
-      }
-      
-      if (isLoggedIn && hasPersonalInfo && healthRecords) {
-        prompt += `用户健康记录信息：\n`;
-        prompt += `- 预产期：${healthRecords.dueDate || '未知'}\n`;
-        prompt += `- 孕周：${healthRecords.pregnancyWeek || '未知'}\n`;
-        prompt += `- 身高：${healthRecords.height || '未知'} cm\n`;
-        prompt += `- 孕前体重：${healthRecords.prePregnancyWeight || '未知'} kg\n`;
-        prompt += `- 当前体重：${healthRecords.currentWeight || '未知'} kg\n\n`;
-      }
       
       prompt += '聊天历史：\n';
       
@@ -241,11 +213,6 @@ async function generateRecommendedQuestions(messages, contextInfo = {}, question
     } else {
       // 没有历史AI回复或没有任何消息的情况
       prompt = `你是一位孕产妇健康顾问，请为用户生成${questionCount}个关于孕期健康、胎儿发育或产后护理的初始问题。这些问题应该对孕产妇有帮助，并且能够引导用户开始对话。只返回问题，每行一个，不要有编号或其他格式。\n\n`;
-      
-      // 添加用户健康记录信息
-      if (solarTermInfo) {
-        prompt += `当前节气：${solarTermInfo}\n\n`;
-      }
       
       if (isLoggedIn && hasPersonalInfo && healthRecords) {
         prompt += `用户健康记录信息：\n`;
@@ -464,8 +431,7 @@ async function generatePersonalizedQuestions(healthRecords, additionalInfo = {},
     const contextInfo = {
       isLoggedIn: true,
       hasPersonalInfo: true,
-      healthRecords,
-      solarTermInfo: additionalInfo.solarTermInfo
+      healthRecords
     };
     
     // 使用generateRecommendedQuestions生成个性化问题

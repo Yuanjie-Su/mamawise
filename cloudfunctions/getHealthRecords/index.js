@@ -1,4 +1,3 @@
-// cloudfunctions/addFavorite/deleteHealthRecords/index.js
 /*
 云平台数据库health_records表
 {
@@ -80,54 +79,27 @@
 }
 */
 
-// 删除指定属性的某条记录
-// 例如：event.property = 'weightRecords'
-// 例如：event.index = 0
-// 返回删除结果, 例如：{deleted: true}
+// 获取用户健康记录表中指定属性，可能指定多种属性，以数组形式返回
+// 例如：event.properties = ['weightRecords', 'bloodPressure']
+// 返回：[{weightRecords: [...weightRecords]}, {bloodPressure: [...bloodPressure]}]
 
 const cloud = require('wx-server-sdk')
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 })
+
 const db = cloud.database()
-const _ = db.command
 
 exports.main = async (event, context) => {
-  // 删除指定属性的某条记录
-  const { property, index } = event
   const wxContext = cloud.getWXContext()
   const _openid = wxContext.OPENID
 
-  try {
-    // 先获取当前指定属性的数组
-    const res = await db.collection('health_records').where({
-      _openid
-    }).field({
-      [property]: true
-    }).get();
+  const { properties } = event
 
-    const currentArray = res.data[0][property];
-    // 创建一个新数组，排除指定索引的元素
-    const newArray = [
-      ...currentArray.slice(0, index),
-      ...currentArray.slice(index + 1)
-    ];
+  const result = await db.collection('health_records').where({
+    _openid: _openid
+  }).get()
 
-    // 更新数据库中的数组
-    const updateRes = await db.collection('health_records').where({
-      _openid
-    }).update({
-      data: {
-        [property]: newArray
-      }
-    });
-
-    return {
-      deleted: updateRes.stats.updated > 0
-    };
-  } catch (e) {
-    console.error(e)
-    return e
-  }
+  return result.data[0][properties]
 }

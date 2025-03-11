@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   USER_INFO: 'userInfo',
   LOGIN_STATUS: 'loginStatus',
   HEALTH_RECORDS: 'healthRecords',
+  HAS_HEALTH_RECORDS: 'hasHealthRecords',
   CURRENT_MODEL: 'currentModel',
   CHAT_HISTORY: 'chatHistory'
 };

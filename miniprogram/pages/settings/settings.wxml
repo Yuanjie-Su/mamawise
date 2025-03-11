@@ -43,4 +43,12 @@
       </view>
     </view>
   </view>
+  
+  <!-- 账号管理 -->
+  <view class="settings-section" wx:if="{{isLoggedIn}}">
+    <view class="section-title">账号管理</view>
+    <view class="settings-item logout-item" bindtap="logout">
+      <text class="item-label logout-label">退出登录</text>
+    </view>
+  </view>
 </view> 

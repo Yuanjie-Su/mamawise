@@ -1,7 +1,6 @@
 const app = getApp()
 import Logger from '../../utils/logger'
 import aiService from '../../services/aiService'
-import solarTermService from '../../services/solarTermService'
 import userService from '../../services/userService'
 import chatService from '../../services/chatService'
 import messageModel from '../../models/messageModel'
@@ -37,8 +36,6 @@ Page({
     isLoggedIn: false,
     // 是否已完善个人信息
     hasPersonalInfo: false,
-    // 节气信息
-    solarTermInfo: '',
     // 当前使用的模型类型
     currentModel: 'DeepSeek-v3',
     // 当前模型的显示名称
@@ -80,9 +77,6 @@ Page({
     // 加载聊天记录
     this.loadChatHistory()
     
-    // 获取节气信息
-    this.updateSolarTerm()
-    
     // 生成推荐问题
     this.generateInitialRecommendedQuestions()
   },
@@ -100,9 +94,6 @@ Page({
     if (loginStatus && this.data.messages && this.data.messages.length > 0) {
       this.checkFavoritedMessages(this.data.messages);
     }
-    
-    // 获取节气信息
-    this.updateSolarTerm();
   },
   
   // 初始化当前模型名称
@@ -163,7 +154,7 @@ Page({
         
         // 根据健康记录生成个性化推荐问题
         if (healthRecords) {
-          const additionalInfo = { solarTermInfo: this.data.solarTermInfo };
+          const additionalInfo = {};
           await aiService.generatePersonalizedQuestions(healthRecords, additionalInfo);
         }
       } else {
@@ -235,7 +226,6 @@ Page({
         isLoggedIn: this.data.isLoggedIn,
         hasPersonalInfo: this.data.hasPersonalInfo,
         healthRecords: this.data.healthRecords,
-        solarTermInfo: this.data.solarTermInfo,
         currentModel: this.data.currentModel
       }
       
@@ -398,13 +388,6 @@ Page({
         }
       }
     })
-  },
-
-  // 更新节气信息
-  updateSolarTerm() {
-    // 获取节气信息
-    const solarTermInfo = solarTermService.getSolarTermInfo();
-    this.setData({ solarTermInfo });
   },
 
   // 切换模型选择器的显示状态

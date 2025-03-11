@@ -1,4 +1,3 @@
-// cloudfunctions/updateChatHistory/index.js
 /*
 云平台数据库chat_history表
 {
@@ -33,36 +32,25 @@
   }
 } 
 */
-// 更新聊天记录，只更新lists属性中对应索引值的对象的“isFavorite”属性
-// 例如：event.index = 0
-// 例如：event.isFavorite = true
-// 返回更新结果, 例如：{updated: true}
+// 获取聊天记录，即获取 lists属性中所有对象
+// 返回lists属性中所有对象  
 
 const cloud = require('wx-server-sdk')
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 })
-const db = cloud.database()
-const _ = db.command
 
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   const _openid = wxContext.OPENID
 
-  const { index, isFavorite } = event
+  // 获取数据库中_openid对应的记录
+  const result = await db.collection('chat_history').where({
+    _openid: _openid
+  }).get()
 
-  try {
-    return await db.collection('chat_history').where({
-      _openid: _openid
-    }).update({
-      data: {
-        // 使用数组索引定位到指定位置的元素并更新其isFavorite属性
-        [`lists.${index}.isFavorite`]: isFavorite
-      }
-    })
-  } catch (e) {
-    console.error(e)
-    return e
-  }
+  // 返回lists属性中所有对象
+  return result.data[0].lists
 }
+

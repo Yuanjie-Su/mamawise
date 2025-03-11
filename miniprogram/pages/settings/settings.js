@@ -1,15 +1,18 @@
 const app = getApp()
 import Logger from '../../utils/logger'
+import userService from '../../services/userService'
 
 Page({
   data: {
     cacheSize: '0KB',
-    showAboutInfo: false
+    showAboutInfo: false,
+    isLoggedIn: false
   },
 
   onLoad(options) {
     Logger.info('设置页面加载')
     this.calculateCacheSize()
+    this.checkLoginStatus()
     
     // 如果有传入 tab 参数，自动滚动到对应的部分
     if (options && options.tab) {
@@ -24,6 +27,58 @@ Page({
         }, 300)
       }
     }
+  },
+  
+  onShow() {
+    // 每次显示页面时检查登录状态
+    this.checkLoginStatus()
+  },
+  
+  // 检查登录状态
+  async checkLoginStatus() {
+    try {
+      const { isLoggedIn } = await userService.checkLoginStatus()
+      this.setData({ isLoggedIn })
+    } catch (error) {
+      Logger.error('检查登录状态失败', error)
+      this.setData({ isLoggedIn: false })
+    }
+  },
+  
+  // 退出登录
+  async logout() {
+    wx.showModal({
+      title: '提示',
+      content: '确定要退出登录吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            // 调用服务登出方法
+            await userService.logout()
+            
+            this.setData({ isLoggedIn: false })
+            
+            wx.showToast({
+              title: '已退出登录',
+              icon: 'success'
+            })
+            
+            Logger.info('用户登出成功')
+            
+            // 返回上一页
+            setTimeout(() => {
+              wx.navigateBack()
+            }, 1500)
+          } catch (error) {
+            Logger.error('用户登出失败', error)
+            wx.showToast({
+              title: '登出失败，请重试',
+              icon: 'none'
+            })
+          }
+        }
+      }
+    })
   },
   
   // 滚动到"关于"部分

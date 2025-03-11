@@ -36,25 +36,23 @@
 } 
 */
 
-// 云函数入口文件
+// 获取用户信息
+// 返回用户信息, 例如：{nickName: '张三', avatarUrl: 'https://example.com/avatar.jpg'}
+
 const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV }) // 使用当前云环境
 
+const db = cloud.database() 
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
-  
+  const _openid = wxContext.OPENID
+
   try {
-    // 获取用户openid
-    const openid = wxContext.OPENID
-    
-    // 查询用户信息
-    const db = cloud.database()
-    const userCollection = db.collection('users')
-    
-    const user = await userCollection.where({
-      _openid: openid
+    const user = await db.collection('users').where({
+      _openid: _openid
     }).get()
     
     if (user.data.length === 0) {

@@ -123,4 +123,16 @@
   color: var(--text-color);
   line-height: 1.6;
   text-align: center;
+}
+
+/* 退出登录按钮样式 */
+.logout-item {
+  border-bottom: none;
+  justify-content: center;
+}
+
+.logout-label {
+  color: #f44336;
+  font-weight: 500;
+  font-size: 32rpx;
 } 

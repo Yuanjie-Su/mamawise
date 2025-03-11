@@ -8,26 +8,20 @@
     },
     "_openid": {
       "description": "用户的微信openid",
-      "type": "string"
+      "type": "string",
+      "default": "system-generated"
     },
-    "userQuery": {
-      "description": "用户的问题",
-      "type": "string"
-    },
-    "aiResponse": {
-      "description": "AI的回答",
-      "type": "string"
-    },
-    "createTime": {
-      "description": "创建时间",
-      "type": "date"
+    "lists": {
+      "description": "messages列表",
+      "type": "array",
+      "default": []
     }
   },
   "required": ["_openid", "userQuery", "aiResponse"],
   "indexes": [
     {
-      "name": "openid_time_index",
-      "fields": ["_openid", "createTime"]
+      "name": "openid_index",
+      "fields": ["_openid"]
     }
   ],
   "permission": {
