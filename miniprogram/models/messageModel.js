@@ -27,17 +27,9 @@ function createSystemMessage(id, content) {
   return {
     id,
     type: 'system',
-    content
+    content,
+    isFavorite: false
   };
-}
-
-/**
- * 创建空的系统消息对象（用于流式响应）
- * @param {Number} id - 消息ID
- * @returns {Object} 空的系统消息对象
- */
-function createEmptySystemMessage(id) {
-  return createSystemMessage(id, '');
 }
 
 /**
@@ -56,6 +48,5 @@ function updateMessageContent(message, content) {
 export default {
   createUserMessage,
   createSystemMessage,
-  createEmptySystemMessage,
   updateMessageContent
 }; 

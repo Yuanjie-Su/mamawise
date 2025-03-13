@@ -1,23 +1,18 @@
 <!--pages/records/records.wxml-->
 <view class="container records-container">
-  <view class="records-header">
-    <view class="title">健康档案</view>
-  </view>
-  
   <!-- 未登录或未完善个人信息时的提示 -->
-  <view class="auth-tip-container" wx:if="{{!isLoggedIn || !hasPersonalInfo}}">
+  <view class="auth-tip-container" wx:if="{{!isLoggedIn}}">
     <view class="auth-tip">
       <image class="auth-tip-icon" src="/images/profile.png"></image>
       <view class="auth-tip-text">
         <text wx:if="{{!isLoggedIn}}">请先登录后查看健康档案</text>
-        <text wx:elif="{{!hasPersonalInfo}}">请先完善个人信息后查看健康档案</text>
       </view>
       <button class="auth-tip-btn" bindtap="navigateToProfile">去登录</button>
     </view>
   </view>
   
   <!-- 已登录且已完善个人信息时显示内容 -->
-  <block wx:if="{{isLoggedIn && hasPersonalInfo}}">
+  <block wx:if="{{isLoggedIn}}">
     <!-- 标签页导航 -->
     <view class="tabs">
       <view 
@@ -35,29 +30,69 @@
       <!-- 基本信息 -->
       <view class="tab-pane" hidden="{{activeTab !== 0}}">
         <view class="info-card">
-          <view class="card-title">孕期信息</view>
+          <view class="card-title">
+            <text>孕期信息</text>
+            <view class="add-info-btn" bindtap="showEditPregnancyInfoForm">
+              <image class="edit-icon" src="/images/icons/edit.png" mode="aspectFit"></image>
+            </view>
+          </view>
           <view class="info-item">
             <text class="info-label">当前孕周</text>
-            <text class="info-value">{{pregnancyInfo.week}}周</text>
+            <text class="info-value">{{basicInfo.pregnancyInfo.week}}周</text>
           </view>
           <view class="info-item">
             <text class="info-label">预产期</text>
-            <text class="info-value">{{pregnancyInfo.dueDate}}</text>
+            <text class="info-value">{{basicInfo.pregnancyInfo.dueDate}}</text>
           </view>
-          <view class="info-item" wx:if="{{pregnancyInfo.lastCheckup}}">
+          <view class="info-item" wx:if="{{basicInfo.pregnancyInfo.lastCheckup}}">
             <text class="info-label">末次产检</text>
-            <text class="info-value">{{pregnancyInfo.lastCheckup}}</text>
+            <text class="info-value">{{basicInfo.pregnancyInfo.lastCheckup}}</text>
+          </view>
+          <view class="baby-countdown" wx:if="{{basicInfo.pregnancyInfo.daysRemaining !== undefined && basicInfo.pregnancyInfo.daysRemaining !== ''}}">
+            <image class="baby-icon" src="/images/icons/baby.png" mode="aspectFit"></image>
+            <view class="countdown-text">
+              <text wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">距离宝宝出生还有</text>
+              <text wx:else>宝宝即将出生</text>
+              <text class="countdown-days" wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">{{basicInfo.pregnancyInfo.daysRemaining}}</text>
+              <text class="countdown-unit" wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">天</text>
+            </view>
+          </view>
+        </view>
+        
+        <view class="info-card">
+          <view class="card-title">
+            <text>其他信息</text>
+            <view class="add-info-btn" bindtap="showEditOtherInfoForm">
+              <image class="edit-icon" src="/images/icons/edit.png" mode="aspectFit"></image>
+            </view>
+          </view>
+          <view class="info-item">
+            <text class="info-label">年龄</text>
+            <text class="info-value">{{basicInfo.otherInfo.age ? basicInfo.otherInfo.age + ' 岁' : '未设置'}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">身高</text>
+            <text class="info-value">{{basicInfo.otherInfo.height ? basicInfo.otherInfo.height + ' cm' : '未设置'}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">体重</text>
+            <text class="info-value">{{basicInfo.otherInfo.weight ? basicInfo.otherInfo.weight + ' kg' : '未设置'}}</text>
           </view>
         </view>
         
         <view class="info-card">
           <view class="card-title">
             <text>过敏信息</text>
-            <view class="add-info-btn" bindtap="showAddAllergyForm">添加</view>
+            <view class="add-info-btn" bindtap="showAddAllergyForm">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
-          <view class="allergy-list" wx:if="{{healthRecords.allergies && healthRecords.allergies.length > 0}}">
-            <view class="allergy-item" wx:for="{{healthRecords.allergies}}" wx:key="index">
+          <view class="allergy-list" wx:if="{{basicInfo.allergyInfo && basicInfo.allergyInfo.length > 0}}">
+            <view class="allergy-item" wx:for="{{basicInfo.allergyInfo}}" wx:key="index">
               {{item}}
+              <view class="allergy-delete-btn" catchtap="deleteAllergy" data-index="{{index}}">
+                <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
+              </view>
             </view>
           </view>
           <view class="empty-tip" wx:else>
@@ -68,11 +103,16 @@
         <view class="info-card">
           <view class="card-title">
             <text>饮食偏好</text>
-            <view class="add-info-btn" bindtap="showAddDietPreferenceForm">添加</view>
+            <view class="add-info-btn" bindtap="showAddDietPreferenceForm">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
-          <view class="allergy-list" wx:if="{{healthRecords.dietPreferences && healthRecords.dietPreferences.length > 0}}">
-            <view class="allergy-item" wx:for="{{healthRecords.dietPreferences}}" wx:key="index">
+          <view class="allergy-list" wx:if="{{basicInfo.dietPreference && basicInfo.dietPreference.length > 0}}">
+            <view class="allergy-item" wx:for="{{basicInfo.dietPreference}}" wx:key="index">
               {{item}}
+              <view class="allergy-delete-btn" catchtap="deleteDietPreference" data-index="{{index}}">
+                <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
+              </view>
             </view>
           </view>
           <view class="empty-tip" wx:else>
@@ -87,7 +127,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>血压记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodPressure">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodPressure">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.bloodPressure}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
@@ -105,7 +147,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>体重记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="weight">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="weight">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.weight}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
@@ -123,7 +167,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>血糖记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodSugar">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="bloodSugar">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.bloodSugar}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
@@ -141,7 +187,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>体温记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="temperature">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="temperature">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.temperature}}" wx:key="date" bindtap="viewDetail" data-type="体温" data-index="{{index}}">
@@ -159,7 +207,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>心率记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="heartRate">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="heartRate">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.heartRate}}" wx:key="date" bindtap="viewDetail" data-type="心率" data-index="{{index}}">
@@ -177,7 +227,9 @@
         <view class="vitals-section">
           <view class="section-header">
             <text>胎动记录</text>
-            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="fetalMovement">添加</view>
+            <view class="add-info-btn" bindtap="showAddVitalsForm" data-type="fetalMovement">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="vitals-list">
             <view class="vitals-item" wx:for="{{vitalsRecords.fetalMovement}}" wx:key="date" bindtap="viewDetail" data-type="胎动" data-index="{{index}}">
@@ -197,7 +249,9 @@
         <view class="medication-section">
           <view class="section-header">
             <text>用药记录</text>
-            <view class="add-info-btn" bindtap="showAddMedicationForm">添加</view>
+            <view class="add-info-btn" bindtap="showAddMedicationForm">
+              <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+            </view>
           </view>
           <view class="medication-list">
             <view class="medication-item" wx:for="{{medications}}" wx:key="index" bindtap="showEditMedicationForm" data-index="{{index}}">
@@ -233,7 +287,9 @@
       <view class="tab-pane" hidden="{{activeTab !== 3}}">
         <view class="section-header">
           <text>产检记录</text>
-          <view class="add-info-btn" bindtap="uploadCheckupRecord">添加</view>
+          <view class="add-info-btn" bindtap="uploadCheckupRecord">
+            <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
+          </view>
         </view>
         
         <!-- 历史产检记录分析结果 -->
@@ -419,20 +475,33 @@
   <!-- 过敏信息表单弹窗 -->
   <view class="info-form" wx:if="{{showAllergyForm}}">
     <view class="form-overlay" bindtap="hideAllergyForm"></view>
-    <view class="form-container">
-      <view class="form-header">
+    <view class="form-container allergy-form-container">
+      <view class="form-header allergy-form-header">
         <text class="form-title">添加过敏信息</text>
         <view class="close-btn" bindtap="hideAllergyForm">×</view>
       </view>
-      <view class="form-content">
-        <view class="form-item">
-          <text class="form-label">过敏信息 *</text>
+      <view class="form-content allergy-form-content">
           <input class="form-input" placeholder="请输入过敏信息，如：海鲜、花粉等" value="{{allergyForm.allergy}}" bindinput="onAllergyInputChange" />
-        </view>
+          
+          <view class="quick-select-title">示例</view>
+          <view class="quick-select-list">
+            <view 
+              class="quick-select-item" 
+              wx:for="{{allergyExamples}}" 
+              wx:key="index" 
+              bindtap="quickAddAllergy" 
+              data-value="{{item}}">
+              {{item}}
+            </view>
+          </view>
       </view>
-      <view class="form-footer">
-        <button class="cancel-btn" bindtap="hideAllergyForm">取消</button>
-        <button class="submit-btn" bindtap="saveAllergy">保存</button>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hideAllergyForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="saveAllergy">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
       </view>
     </view>
   </view>
@@ -440,20 +509,125 @@
   <!-- 饮食偏好表单弹窗 -->
   <view class="info-form" wx:if="{{showDietPreferenceForm}}">
     <view class="form-overlay" bindtap="hideDietPreferenceForm"></view>
-    <view class="form-container">
-      <view class="form-header">
+    <view class="form-container allergy-form-container">
+      <view class="form-header allergy-form-header">
         <text class="form-title">添加饮食偏好</text>
         <view class="close-btn" bindtap="hideDietPreferenceForm">×</view>
       </view>
+      <view class="form-content allergy-form-content">
+          <input class="form-input" placeholder="请输入饮食偏好，如：素食、低糖等" value="{{dietPreferenceForm.preference}}" bindinput="onDietPreferenceInputChange" />
+          
+          <view class="quick-select-title">示例</view>
+          <view class="quick-select-list">
+            <view 
+              class="quick-select-item" 
+              wx:for="{{dietExamples}}" 
+              wx:key="index" 
+              bindtap="quickAddDietPreference" 
+              data-value="{{item}}">
+              {{item}}
+            </view>
+          </view>
+      </view>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hideDietPreferenceForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="saveDietPreference">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 其他信息表单弹窗 -->
+  <view class="info-form" wx:if="{{showOtherInfoForm}}">
+    <view class="form-overlay" bindtap="hideOtherInfoForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">编辑基本信息</text>
+        <view class="close-btn" bindtap="hideOtherInfoForm">×</view>
+      </view>
       <view class="form-content">
         <view class="form-item">
-          <text class="form-label">饮食偏好 *</text>
-          <input class="form-input" placeholder="请输入饮食偏好，如：素食、低糖等" value="{{dietPreferenceForm.preference}}" bindinput="onDietPreferenceInputChange" />
+          <text class="form-label">年龄 (岁)</text>
+          <picker bindchange="onAgeChange" value="{{ageIndex}}" range="{{ageOptions}}">
+            <view class="picker-view">
+              <text wx:if="{{ageIndex >= 0}}">{{ageOptions[ageIndex]}} 岁</text>
+              <text wx:else>请选择年龄（可选）</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <view class="form-action">
+            <text class="clear-btn" catchtap="clearAge" wx:if="{{otherInfoForm.age}}">清除</text>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">身高 (cm)</text>
+          <picker bindchange="onHeightChange" value="{{heightIndex}}" range="{{heightOptions}}">
+            <view class="picker-view">
+              <text wx:if="{{heightIndex >= 0}}">{{heightOptions[heightIndex]}} cm</text>
+              <text wx:else>请选择身高（可选）</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <view class="form-action">
+            <text class="clear-btn" catchtap="clearHeight" wx:if="{{otherInfoForm.height}}">清除</text>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">体重 (kg)</text>
+          <picker bindchange="onWeightChange" value="{{weightIndex}}" range="{{weightOptions}}">
+            <view class="picker-view">
+              <text wx:if="{{weightIndex >= 0}}">{{weightOptions[weightIndex]}} kg</text>
+              <text wx:else>请选择体重（可选）</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <view class="form-action">
+            <text class="clear-btn" catchtap="clearWeight" wx:if="{{otherInfoForm.weight}}">清除</text>
+          </view>
         </view>
       </view>
       <view class="form-footer">
-        <button class="cancel-btn" bindtap="hideDietPreferenceForm">取消</button>
-        <button class="submit-btn" bindtap="saveDietPreference">保存</button>
+        <button class="cancel-btn" bindtap="hideOtherInfoForm">取消</button>
+        <button class="submit-btn" bindtap="saveOtherInfo">保存</button>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 孕期信息表单弹窗 -->
+  <view class="info-form" wx:if="{{showPregnancyInfoForm}}">
+    <view class="form-overlay" bindtap="hidePregnancyInfoForm"></view>
+    <view class="form-container">
+      <view class="form-header">
+        <text class="form-title">编辑孕期信息</text>
+        <view class="close-btn" bindtap="hidePregnancyInfoForm">×</view>
+      </view>
+      <view class="form-content">
+        <view class="form-item">
+          <text class="form-label">当前孕周</text>
+          <picker bindchange="onPregnancyWeekChange" value="{{pregnancyWeekIndex}}" range="{{pregnancyWeekOptions}}">
+            <view class="picker-view">
+              <text>{{pregnancyWeekOptions[pregnancyWeekIndex] || '请选择孕周'}} 周</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">预产期</text>
+          <picker mode="date" bindchange="onDueDateChange" value="{{pregnancyInfoForm.dueDate}}">
+            <view class="picker-view">
+              <text>{{pregnancyInfoForm.dueDate || '请选择预产期'}}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <view class="form-tip">选择孕周后会自动计算预产期，您也可以手动选择</view>
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="cancel-btn" bindtap="hidePregnancyInfoForm">取消</button>
+        <button class="submit-btn" bindtap="savePregnancyInfo">保存</button>
       </view>
     </view>
   </view>

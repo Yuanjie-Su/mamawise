@@ -6,7 +6,7 @@ page {
   --secondary-color: #7BBFE5;
   --secondary-light: #E1EFF8;
   --text-color: #333333;
-  --text-light: #999999;
+  --text-light: #888888; 
   --background-color: #FFFFFF;
   --border-color: #EEEEEE;
   

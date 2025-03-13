@@ -1,6 +1,8 @@
 const app = getApp()
 import Logger from '../../utils/logger'
-import userService from '../../services/userService'
+import appConfig from '../../config/appConfig'
+
+const { STORAGE_KEYS } = appConfig;
 
 Page({
   data: {
@@ -12,7 +14,9 @@ Page({
   onLoad(options) {
     Logger.info('设置页面加载')
     this.calculateCacheSize()
-    this.checkLoginStatus()
+    this.setData({
+      isLoggedIn: app.globalData.isLoggedIn
+    })
     
     // 如果有传入 tab 参数，自动滚动到对应的部分
     if (options && options.tab) {
@@ -29,22 +33,6 @@ Page({
     }
   },
   
-  onShow() {
-    // 每次显示页面时检查登录状态
-    this.checkLoginStatus()
-  },
-  
-  // 检查登录状态
-  async checkLoginStatus() {
-    try {
-      const { isLoggedIn } = await userService.checkLoginStatus()
-      this.setData({ isLoggedIn })
-    } catch (error) {
-      Logger.error('检查登录状态失败', error)
-      this.setData({ isLoggedIn: false })
-    }
-  },
-  
   // 退出登录
   async logout() {
     wx.showModal({
@@ -52,30 +40,21 @@ Page({
       content: '确定要退出登录吗？',
       success: async (res) => {
         if (res.confirm) {
-          try {
-            // 调用服务登出方法
-            await userService.logout()
-            
-            this.setData({ isLoggedIn: false })
-            
-            wx.showToast({
-              title: '已退出登录',
-              icon: 'success'
-            })
-            
-            Logger.info('用户登出成功')
-            
-            // 返回上一页
-            setTimeout(() => {
-              wx.navigateBack()
-            }, 1500)
-          } catch (error) {
-            Logger.error('用户登出失败', error)
-            wx.showToast({
-              title: '登出失败，请重试',
-              icon: 'none'
-            })
-          }
+          // 更新页面状态
+          this.setData({
+            isLoggedIn: false
+          });
+
+          // 更新全局状态
+          app.globalData.isLoggedIn = false
+
+          // 清除本地存储中的用户信息和登录状态
+          wx.removeStorageSync(STORAGE_KEYS.USER_INFO);
+          wx.removeStorageSync(STORAGE_KEYS.IS_LOGGED_IN);
+          wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
+          wx.removeStorageSync(STORAGE_KEYS.HAS_HEALTH_RECORDS);
+
+          Logger.info('用户登出成功');
         }
       }
     })
@@ -137,15 +116,13 @@ Page({
       success: (res) => {
         if (res.confirm) {
           // 保存重要数据
-          const userInfo = wx.getStorageSync('userInfo')
-          const personalInfo = wx.getStorageSync('personalInfo')
+          const userInfo = wx.getStorageSync(STORAGE_KEYS.USER_INFO)
           
           // 清除所有缓存
           wx.clearStorage({
             success: () => {
               // 恢复重要数据
-              if (userInfo) wx.setStorageSync('userInfo', userInfo)
-              if (personalInfo) wx.setStorageSync('personalInfo', personalInfo)
+              if (userInfo) wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo)
               
               // 重新计算缓存大小
               this.calculateCacheSize()

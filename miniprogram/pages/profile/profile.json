@@ -1,8 +1,4 @@
 {
   "usingComponents": {},
-  "permission": {
-    "scope.userInfo": {
-      "desc": "需要您的用户信息以完成登录"
-    }
-  }
+  "navigationBarTitleText": "我的"
 }

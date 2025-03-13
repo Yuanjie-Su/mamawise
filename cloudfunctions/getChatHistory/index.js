@@ -48,19 +48,41 @@ cloud.init({
 
 const db = cloud.database()
 
+const chatHistoryCollection = db.collection('chat_history')
+
 exports.main = async (event, context) => {
-  const wxContext = cloud.getWXContext()
-  const _openid = wxContext.OPENID
+  // 获取openid
+  const openid = cloud.getWXContext().OPENID
 
   // 获取数据库中_openid对应的记录
-  const result = await db.collection('chat_history').where({
-    _openid: _openid
+  const doc = await chatHistoryCollection.where({
+    _openid: openid
   }).get()
 
-  // 返回lists属性和model_name属性
+  // 记录存在
+  if (doc.data.length > 0) {
+    return {
+      lists: doc.data[0].lists,
+      model_name: doc.data[0].model_name
+    }
+  }
+
+  const {model_name} = event
+  
+  // 使用upsert保证原子性插入
+  await chatHistoryCollection.upsert(
+    { _openid: openid },
+    { 
+      lists: [],
+      model_name: model_name,
+    },
+    { update: true, setOnInsert: true }
+  );
+
+  // 返回
   return {
-    lists: result.data[0].lists,
-    model_name: result.data[0].model_name
+    lists: [],
+    model_name: model_name,
   }
 }
 

@@ -8,68 +8,63 @@ import appConfig from '../config/appConfig';
 
 const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
 
+const app = getApp();
+
 /**
  * 用户登录
  * @returns {Promise<Object>} 登录结果
  */
-function login(code, userInfo) {
-  return new Promise((resolve, reject) => {
-    wx.showLoading({ title: '登录中...' });
+async function login() {
+  try {
+    // 1. 检查权限（异步处理）
+    const authSetting = await new Promise((resolve, reject) => {
+      wx.getSetting({
+        success: resolve,
+        fail: reject
+      })
+    })
+    
+    if (!authSetting.authSetting['scope.userInfo']) {
+      Logger.debug('未授权')
+      // 2. 授权弹窗（避免递归调用）
+      return new Promise((resolve, reject) => {
+        wx.authorize({
+          scope: 'scope.userInfo',
+          success: resolve,
+          fail: reject
+        })
+      })
+    }
 
-    // 调用云函数登录
-    wx.cloud.callFunction({
+    // 3. 获取用户信息（异步处理）
+    const userInfoRes = await new Promise((resolve, reject) => {
+      wx.getUserInfo({
+        desc: '你的信息将用于小程序登录',
+        success: resolve,
+        fail: reject
+      })
+    })
+    
+    const userInfo = {
+      nickName: userInfoRes.userInfo.nickName,
+      avatarUrl: userInfoRes.userInfo.avatarUrl
+    }
+
+    // 4. 调用云函数（添加错误处理）
+    const cloudRes = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.LOGIN,
-      data: {
-        code: code,
-        userInfo: userInfo
-      }
-    }).then(async (res) => {
-      wx.hideLoading();
-
-      // 验证返回数据格式
-      if(!res || !res.result) {
-        reject(new Error('无效登录响应'));
-        return;
-      }
-
-      const { success, error } = res.result;
-
-      if (success) {
-        resolve(res.result);
-      } else {
-        reject(new Error(error || '登录失败'));
-      }
-    }).catch(err => {
-      wx.hideLoading();
-      reject(err);
-    });
-  });
-}
-
-/**
- * 获取用户信息
- * @returns {Promise<Object>} 用户信息
- */
-function getUserInfo() {
-  return new Promise((resolve, reject) => {
-    wx.cloud.callFunction({
-      name: CLOUD_FUNCTIONS.GET_USER_INFO,
-      success: (res) => {
-        if (res.result && res.result.success) {
-          const userInfo = res.result.data;
-          // 保存到本地缓存
-          wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo);
-          resolve(userInfo);
-        } else {
-          reject(new Error(res.result.error || '获取用户信息失败'));
-        }
-      },
-      fail: (err) => {
-        Logger.error('获取用户信息失败', err);
-        reject(err);
-      }
-    });
-  });
+      data: { userInfo }
+    })
+    
+    if (cloudRes.result.success) {
+      return cloudRes.result.userInfo
+    } else {
+      throw new Error(cloudRes.result.error || '登录失败')
+    }
+  } catch (error) {
+    Logger.error('登录失败:', error)
+    throw error
+  }
 }
 
 /**
@@ -103,44 +98,7 @@ function updateUserInfo(property, value ) {
   });
 }
 
-/**
- * 用户登出
- * @returns {Promise<boolean>} 登出结果
- */
-function logout() {
-  return new Promise((resolve) => {
-    // 清除本地存储中的用户信息和登录状态
-    wx.removeStorageSync(STORAGE_KEYS.USER_INFO);
-    wx.removeStorageSync(STORAGE_KEYS.LOGIN_STATUS);
-    wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
-    wx.removeStorageSync(STORAGE_KEYS.HAS_HEALTH_RECORDS);
-    
-    resolve(true);
-  });
-}
-
-/**
- * 获取提示词
- * @returns {Promise<Object>} 提示词
- */
-function getPrompt() {
-  return new Promise((resolve, reject) => {
-    wx.cloud.callFunction({
-      name: CLOUD_FUNCTIONS.GET_PROMPT,
-      success: (res) => {
-        resolve(res.result);
-      },
-      fail: (err) => {
-        reject(err);
-      }
-    });
-  });
-}
-
 export default {
   login,
-  logout,
-  getUserInfo,
   updateUserInfo,
-  getPrompt
 }; 

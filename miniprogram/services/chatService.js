@@ -4,26 +4,22 @@
  */
 
 import Logger from '../utils/logger';
-import markdownUtil from '../utils/markdownUtil';
 import appConfig from '../config/appConfig';
 
-const { STORAGE_KEYS } = appConfig;
+const { STORAGE_KEYS, DEFAULT_AI_CONFIG } = appConfig;
 
 /**
  * 保存聊天记录
  * @param {Array} messages - 聊天消息数组
  * @returns {Promise<void>}
  */
-function saveChatHistory(messages) {
-  return new Promise((resolve) => {
-    try {
-      wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, messages);
-      resolve();
-    } catch (error) {
-      Logger.error('保存聊天记录失败', error);
-      resolve(); // 即使保存失败也不影响用户体验
-    }
-  });
+async function saveChatHistory(messages) {
+  try {
+    // 本地缓存
+    wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, messages);
+  } catch (error) {
+    Logger.error('保存聊天记录失败', error);
+  }
 }
 
 /**
@@ -38,6 +34,30 @@ function getChatHistory() {
     } catch (error) {
       Logger.error('获取聊天记录失败', error);
       resolve([]);
+    }
+  });
+} 
+
+/**
+ * 获取提示词
+ * @returns {Promise<Object>} 提示词对象
+ */
+function getPrompt() {
+  return new Promise((resolve) => {
+    try {
+      const prompt = wx.getStorageSync(STORAGE_KEYS.PROMPT);
+      resolve(prompt || {
+        'default_prompt': DEFAULT_AI_CONFIG.PROMPT,
+        'health_prompt': ''
+      });
+    } catch (error) {
+      Logger.error('获取提示词失败', error);
+      resolve(
+        {
+          'default_prompt': DEFAULT_AI_CONFIG.PROMPT,
+          'health_prompt': ''
+        }
+      );
     }
   });
 }
@@ -69,7 +89,6 @@ function addUserMessage(content, messages) {
     id: messages.length + 1,
     type: 'user',
     content: content,
-    timestamp: Date.now()
   };
   
   const updatedMessages = [...messages, newMessage];
@@ -89,7 +108,6 @@ function addSystemMessage(content, messages) {
     id: messages.length + 1,
     type: 'system',
     content: content,
-    timestamp: Date.now()
   };
   
   const updatedMessages = [...messages, newMessage];
@@ -119,9 +137,9 @@ function updateLastMessage(content, messages) {
 export default {
   saveChatHistory,
   getChatHistory,
+  getPrompt,
   clearChatHistory,
   addUserMessage,
   addSystemMessage,
   updateLastMessage,
-  formatMarkdown: markdownUtil.formatMarkdown
 }; 

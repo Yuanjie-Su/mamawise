@@ -126,13 +126,20 @@
 }
 
 /* 退出登录按钮样式 */
-.logout-item {
-  border-bottom: none;
+.logout-container {
+  padding: 40rpx 30rpx 60rpx;
+  display: flex;
   justify-content: center;
 }
 
-.logout-label {
+.logout-btn {
+  background-color: #FFFFFF;
   color: #f44336;
   font-weight: 500;
   font-size: 32rpx;
+  width: 80%;
+  text-align: center;
+  border-radius: 10rpx;
+  padding: 20rpx 0;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 } 

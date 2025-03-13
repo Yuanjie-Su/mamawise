@@ -18,11 +18,11 @@
   <!-- 模型选择器下拉菜单 -->
   <view class="model-dropdown" wx:if="{{showModelSelector}}" catchtap="stopPropagation">
     <view class="dropdown-triangle"></view>
-    <view class="model-option {{item.id === currentModel ? 'selected' : ''}}" 
+    <view class="model-option {{item.name === currentModelName ? 'selected' : ''}}" 
           wx:for="{{modelOptions}}" 
-          wx:key="id" 
+          wx:key="name" 
           catchtap="selectModel" 
-          data-model="{{item.id}}">
+          data-model="{{item.name}}">
       <view class="model-option-name">{{item.name}}</view>
       <view class="model-option-desc">{{item.description}}</view>
     </view>

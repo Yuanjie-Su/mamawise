@@ -2,30 +2,30 @@ const app = getApp()
 import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
-
+import userService from '../../services/userService'
 const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
 
 Page({
   data: {
     userInfo: {},
-    loginStatus: false,
+    isLoggedIn: false,
     menuList: [
       {
         id: 1,
         name: '我的收藏',
-        icon: '/images/favorite.png',
+        icon: '/images/icons/favorite_profile.png',
         url: '/pages/favorites/favorites'
       },
       {
         id: 2,
         name: '使用帮助',
-        icon: '/images/help.png',
+        icon: '/images/icons/help.png',
         url: ''
       },
       {
         id: 4,
         name: '设置',
-        icon: '/images/settings.png',
+        icon: '/images/icons/settings.png',
         url: '/pages/settings/settings'
       }
     ],
@@ -47,8 +47,8 @@ Page({
 
     // 加载用户信息
     this.setData({
-      userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO),
-      loginStatus: app.globalData.loginStatus
+      userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) || {},
+      isLoggedIn: app.globalData.isLoggedIn
     })
 
     // 初始化日历数据
@@ -61,6 +61,23 @@ Page({
   onShow() {
     Logger.info('个人页面显示');
 
+    // 检查登录是否发生变化
+    let currentIsLoggedIn = app.globalData.isLoggedIn
+    if (currentIsLoggedIn !== this.data.isLoggedIn) {
+      this.setData({
+        isLoggedIn: currentIsLoggedIn
+      })
+      if (currentIsLoggedIn) {
+        this.setData({
+          userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) ||  {}
+        })
+      } else {
+        this.setData({
+          userInfo: {}
+        })
+      }
+    }
+
     // 初始化日历数据
     this.initCalendarData();
 
@@ -69,159 +86,214 @@ Page({
   },
 
   // 用户登录
-  login() {
-    // 检查权限
-    wx.getSetting({
+  async login() {
+    try {
+      const userInfo = await userService.login()
+      this.setData({
+        userInfo,
+        isLoggedIn: true
+      })
+
+      // 更新本地状态
+      wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo)
+      wx.setStorageSync(STORAGE_KEYS.IS_LOGGED_IN, true)
+      app.globalData.isLoggedIn = true
+    } catch (err) {
+      Logger.error('登录失败', err)
+    }
+  },
+
+  // 编辑用户信息
+  editUserInfo() {
+    if (!this.data.isLoggedIn) {
+      return;
+    }
+    
+    wx.showActionSheet({
+      itemList: ['修改头像', '修改昵称'],
       success: (res) => {
-        if (!res.authSetting['scope.userInfo']) {
-          wx.authorize({
-            scope: 'scope.userInfo',
-            success: () => this.login(), // 授权成功后再次调用登录
-            fail: (err) => {
-              Logger.error('授权失败', err);
-              wx.showToast({
-                title: '授权失败，请重试',
-                icon: 'none'
-              })
-            }
-          })
-          return;
+        if (res.tapIndex === 0) {
+          // 修改头像
+          this.changeAvatar();
+        } else if (res.tapIndex === 1) {
+          // 修改昵称
+          this.changeNickname();
         }
       }
     });
-
-    // 获取用户信息
-    wx.getUserInfo({
-      desc: '你的信息将用于小程序登录',
+  },
+  
+  // 修改头像
+  changeAvatar() {
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
       success: (res) => {
-        const userInfo = {
-          nickName: res.userInfo.nickName,
-          avatarUrl: res.userInfo.avatarUrl
-        }
-        // 调用登录API
-        wx.login({
-          success: (loginRes) => {
-            wx.showLoading({ title: '登录中...' });
-            // 调用云函数
+        const tempFilePath = res.tempFilePaths[0];
+        
+        // 显示加载提示
+        wx.showLoading({
+          title: '上传中...',
+        });
+        
+        // 上传图片到云存储
+        const cloudPath = `mamawise/miniprogram/images/user_avatar/${app.globalData.openid || 'user'}_${new Date().getTime()}.png`;
+        wx.cloud.uploadFile({
+          cloudPath: cloudPath,
+          filePath: tempFilePath,
+          success: (res) => {
+            const fileID = res.fileID;
+            
+            // 调用云函数更新用户头像
             wx.cloud.callFunction({
-              name: CLOUD_FUNCTIONS.LOGIN,
+              name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
               data: {
-                code: loginRes.code,
-                userInfo: userInfo
+                property: 'avatarUrl',
+                value: fileID
               }
-            }).then(async (res) => {
+            }).then(res => {
               wx.hideLoading();
-
-              // 验证返回数据格式
+              
               if (!res || !res.result) {
-                reject(new Error('无效登录响应'));
+                wx.showToast({
+                  title: '更新失败，请重试',
+                  icon: 'none'
+                });
                 return;
               }
-
-              const { success, userInfo, error } = res.result;
-
+              
+              const { success, error } = res.result;
+              
               if (success) {
                 // 更新本地状态
+                const updatedUserInfo = { 
+                  ...this.data.userInfo, 
+                  avatarUrl: fileID 
+                }; 
+                
                 this.setData({
-                  userInfo: userInfo,
-                  loginStatus: true
+                  userInfo: updatedUserInfo
                 });
-
-                wx.setStorageSync('userInfo', userInfo)
-                wx.setStorageSync('loginStatus', true)
-
-                app.globalData.loginStatus = true
-                Logger.info('登录成功');
-              } else {
-                Logger.error('登录失败', error);
+                
+                // 更新本地存储
+                wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo);
+                
                 wx.showToast({
-                  title: '登录失败，请重试',
+                  title: '头像已更新',
+                  icon: 'success'
+                });
+                
+                Logger.info('用户头像已更新', { fileID });
+              } else {
+                Logger.error('更新头像失败', error);
+                wx.showToast({
+                  title: '更新失败，请重试',
                   icon: 'none'
                 });
               }
-            })
+            }).catch(err => {
+              wx.hideLoading();
+              Logger.error('更新头像失败', err);
+              wx.showToast({
+                title: '更新失败，请重试',
+                icon: 'none'
+              });
+            });
+          },
+          fail: (err) => {
+            wx.hideLoading();
+            Logger.error('上传头像失败', err);
+            wx.showToast({
+              title: '上传失败，请重试',
+              icon: 'none'
+            });
           }
-        })
+        });
       }
     });
   },
-
-  // 用户登出
-  logout() {
-    wx.showModal({
-      title: '提示',
-      content: '确定要退出登录吗？',
-      success: res => {
-        if (res.confirm) {
-          // 清除本地存储中的用户信息和登录状态
-          wx.removeStorageSync(STORAGE_KEYS.USER_INFO);
-          wx.removeStorageSync(STORAGE_KEYS.LOGIN_STATUS);
-          wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS);
-          wx.removeStorageSync(STORAGE_KEYS.HAS_HEALTH_RECORDS);
-
-          // 更新本地状态
-          this.setData({
-            userInfo: {},
-            loginStatus: false
-          });
-
-          Logger.info('用户登出成功');
-        }
-      }
+  
+  // 预览头像
+  previewAvatar() {
+    // 只有登录用户才能预览头像
+    if (!this.data.isLoggedIn || !this.data.userInfo.avatarUrl) {
+      return;
+    }
+    
+    // 使用微信预览图片API
+    wx.previewImage({
+      current: this.data.userInfo.avatarUrl, // 当前显示图片的链接
+      urls: [this.data.userInfo.avatarUrl] // 需要预览的图片链接列表
     });
+    
+    Logger.info('用户预览头像');
   },
-
-  editNickname() {
+  
+  // 修改昵称
+  changeNickname() {
     wx.showModal({
       title: '修改昵称',
       editable: true,
       placeholderText: this.data.userInfo.nickName,
       success: async (res) => {
-        if (res.confirm) {
-          const newNickname = res.content
-
-          // 调用云函数
-          wx.cloud.callFunction({
-            name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-            data: {
-              property: 'nickName',
-              value: newNickname
+        if (res.confirm && res.content.trim()) {
+          const newNickname = res.content.trim();
+          
+          try {
+            wx.showLoading({ title: '保存中...' });
+            
+            // 调用云函数更新用户信息
+            const result = await wx.cloud.callFunction({
+              name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
+              data: {
+                property: 'nickName',
+                value: newNickname
+              }
+            });
+            
+            wx.hideLoading();
+            
+            if (!result || !result.result) {
+              throw new Error('无效更新响应');
             }
-          }).then(res => {
-            if (!res || !res.result) {
-              reject(new Error('无效更新响应'));
-              return;
-            }
-
-            const { success, error } = res.result;
-
+            
+            const { success, error } = result.result;
+            
             if (success) {
+              // 更新本地状态
+              const updatedUserInfo = { 
+                ...this.data.userInfo, 
+                nickName: newNickname 
+              };
+              
               this.setData({
-                userInfo: {
-                  nickName: newNickname,
-                  avatarUrl: this.data.userInfo.avatarUrl
-                }
+                userInfo: updatedUserInfo
               });
-
-              wx.setStorageSync('userInfo', this.data.userInfo)
-              Logger.info('昵称修改成功');
-            } else {
-              Logger.error('更新失败', error);
+              
+              // 更新本地存储
+              wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo);
+              
               wx.showToast({
-                title: '修改失败，请重试',
-                icon: 'none'
+                title: '昵称已更新',
+                icon: 'success'
               });
+              
+              Logger.info('用户昵称已更新', { newNickname });
+            } else {
+              throw new Error(error || '更新失败');
             }
-          }).catch(err => {
-            Logger.error('更新失败', err);
+          } catch (error) {
+            wx.hideLoading();
             wx.showToast({
-              title: '修改失败，请重试',
+              title: '更新失败，请重试',
               icon: 'none'
             });
-          })
+            Logger.error('更新用户昵称失败', error);
+          }
         }
       }
-    })
+    });
   },
 
   // 初始化日历数据

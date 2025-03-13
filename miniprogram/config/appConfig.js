@@ -7,12 +7,12 @@ const APP_VERSION = '1.0.0';
 
 // 缓存键名
 const STORAGE_KEYS = {
-  USER_INFO: 'userInfo',
-  LOGIN_STATUS: 'loginStatus',
-  HEALTH_RECORDS: 'healthRecords',
-  HAS_HEALTH_RECORDS: 'hasHealthRecords',
-  CURRENT_MODEL: 'currentModel',
-  CHAT_HISTORY: 'chatHistory',
+  USER_INFO: 'userInfo',         // 用户信息
+  IS_LOGGED_IN: 'isLoggedIn',  // 登录状态
+  CURRENT_MODEL: 'currentModel', // 当前模型
+  CHAT_HISTORY: 'chatHistory',  // 聊天历史
+  PROMPT: 'prompt',             // 提示词
+  HEALTH_RECORDS: 'healthRecords', // 健康记录
 };
 
 // API配置
@@ -23,44 +23,79 @@ const API_CONFIG = {
 // 云函数名称
 const CLOUD_FUNCTIONS = {
   LOGIN: 'login',
-  GET_USER_INFO: 'getUserInfo',
+  ADD_CHAT_HISTORY: 'addChatHistory',
+  ADD_HEALTH_RECORD: 'addHealthRecord',
+  ADD_FAVORITE: 'addFavorite',
+  DELETE_CHAT_HISTORY: 'deleteChatHistory',
+  DELETE_FAVORITE: 'deleteFavorite',
+  DELETE_HEALTH_RECORD: 'deleteHealthRecord',
+  DELETE_USER_INFO: 'deleteUserInfo',
   UPDATE_USER_INFO: 'updateUserInfo',
   GET_HEALTH_RECORDS: 'getHealthRecords',
-  UPDATE_HEALTH_RECORDS: 'updateHealthRecords',
-  GET_CHAT_HISTORY: 'getChatHistory',
   GET_PROMPT: 'getPrompt',
+  GET_CHAT_HISTORY: 'getChatHistory',
+  UPDATE_CHAT_HISTORY: 'updateChatHistory',
+  UPDATE_HEALTH_RECORDS: 'updateHealthRecords',
+  UPDATE_PROMPT: 'updatePrompt',
+  UPDATE_USER_INFO: 'updateUserInfo',
 };
 
 // 默认配置
-const DEFAULT_CONFIG = {
-  // 默认天气信息
-  DEFAULT_WEATHER: {
-    icon: '',
-    temperature: '--'
-  },
-  
+const DEFAULT_AI_CONFIG = {
+  // 默认模型
+  MODEL: 'DeepSeek-v3',
+
   // 默认推荐问题
-  DEFAULT_QUESTIONS: [
-    '孕期应该如何保持健康的饮食习惯？',
-    '胎动有什么规律和注意事项？',
-    '产前准备需要做哪些事情？',
-    '如何缓解孕期常见的不适症状？',
-    '产后恢复有哪些注意事项？'
-  ]
+  RECOMMENDED_QUESTIONS: [
+  '孕期应该如何保持健康的饮食习惯？',
+  '如何缓解孕期常见的不适症状？',
+  '孕期情绪波动如何调节？',
+  '如何科学安排产检时间？',
+  '孕期运动有哪些注意事项？',
+  '胎动有什么规律和注意事项？',
+  '产前准备需要做哪些事情？',
+  '孕期营养补充有哪些建议？',
+  '孕期睡眠质量不好怎么改善？',
+  '孕期水肿应该如何缓解？',
+  '孕期便秘有什么解决方法？',
+  '孕期贫血如何预防和调理？',
+  '产后恢复有哪些注意事项？',
+  '新生儿护理有哪些基本知识？',
+  '母乳喂养有哪些技巧和注意事项？',
+  '如何判断是否临产？',
+  '剖腹产和顺产各有什么优缺点？',
+  '孕期皮肤变化如何护理？',
+  '孕期牙齿保健有什么建议？'
+  ],
+
+  // 默认提示词
+  PROMPT: `你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。
+请以友善、专业的语气回答用户的问题，避免过于冰冷或机械的回复。
+如果用户询问的问题超出你的知识范围或不确定的内容，请诚实告知并建议用户咨询专业医生。
+\n\n
+回复内容包含正文和标题。
+正文不需要包含任何打招呼语句（如"您好"、"亲爱的准妈妈"等），需要通过emoji表情润色，结构清晰。
+正文中每个建议尽量详细，不要过于简略。
+标题简短（不超过20个字）。
+\n\n回复格式要求：
+正文
+--- 标题
+`
+
 };
 
 // AI模型配置
 const MODEL_CONFIG = {
   'DeepSeek-v3': {
-    id: 'DeepSeek-v3',
     name: 'DeepSeek-v3',
-    apiModel: 'deepseek-v3',
+    provider: 'deepseek',
+    api: 'deepseek-v3',
     description: '通用性混合专家'
   },
   'DeepSeek-r1': {
-    id: 'DeepSeek-r1',
     name: 'DeepSeek-r1',
-    apiModel: 'deepseek-r1',
+    provider: 'deepseek',
+    api: 'deepseek-r1',
     description: '专注于复杂推理任务'
   }
 };
@@ -76,7 +111,7 @@ export default {
   STORAGE_KEYS,
   API_CONFIG,
   CLOUD_FUNCTIONS,
-  DEFAULT_CONFIG,
+  DEFAULT_AI_CONFIG,
   MODEL_CONFIG,
-  MODEL_OPTIONS
+  MODEL_OPTIONS,
 }; 

@@ -1,13 +1,12 @@
 const app = getApp()
 import Logger from '../../utils/logger'
+import appConfig from '../../config/appConfig'
 import aiService from '../../services/aiService'
-import userService from '../../services/userService'
 import chatService from '../../services/chatService'
 import messageModel from '../../models/messageModel'
-import appConfig from '../../config/appConfig'
 import markdownUtil from '../../utils/markdownUtil'
 
-const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS } = appConfig
+const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS, DEFAULT_AI_CONFIG } = appConfig
 
 Page({
   data: {
@@ -17,8 +16,6 @@ Page({
     inputValue: '', 
     // 消息列表的滚动位置，用于控制页面滚动到指定位置
     scrollTop: 0, 
-    // 用户的健康记录，初始为 null，后续可能从服务器获取
-    healthRecords: null, 
     // 是否正在加载 AI 回复的标志，用于显示加载状态
     isLoading: false, 
     // 正在加载的消息ID，用于标识哪条消息正在加载
@@ -28,19 +25,11 @@ Page({
     // 提示词
     prompt: {},
     // 推荐问题列表，显示在页面上供用户快速选择提问，每次随机生成3个符合语境的问题
-    recommendedQuestions: [
-      '健康饮食有什么建议？',
-      '如何保持良好的作息？',
-      '日常应该注意什么？'
-    ],
+    recommendedQuestions: [],
     // 用户登录状态
     isLoggedIn: false,
-    // 是否已完善个人信息
-    hasPersonalInfo: false,
-    // 当前使用的模型类型
-    currentModel: 'DeepSeek-v3',
     // 当前模型的显示名称
-    currentModelName: 'DeepSeek-v3',
+    currentModelName: DEFAULT_AI_CONFIG.MODEL,
     // 是否显示模型选择器
     showModelSelector: false,
     // 可用的模型类型列表
@@ -57,66 +46,47 @@ Page({
 
   async onLoad() {
     Logger.debug('聊天页面加载')
-    
-    // 判断是否已登录
-    if (app.globalData.loginStatus) {
-      this.setData({
-        isLoggedIn: true
-      })
-      // 并发执行
-    await Promise.all([
-      // 加载聊天记录
-      this.loadChatHistory(),
-      // 获取提示词
-      this.loadPrompt()
-    ])
-    } else {
-      this.setData({
-        isLoggedIn: false
-      })
-      return
-    }
 
-    // 获取推荐问题
-    this.getRecommendedQuestions(this.data.messages
-      , this.data.prompt['recommended_questions'])
-  },
-  
-  async onShow() {
-    // 判断是否已登录
-    if (app.globalData.loginStatus) {
-      this.setData({
-        isLoggedIn: true
-      })
-      // 并发执行
-    await Promise.all([
-      // 加载聊天记录
-      this.loadChatHistory(),
-      // 获取提示词
-      this.loadPrompt()
-    ])
-    } else {
-      this.setData({
-        isLoggedIn: false
-      })
-      return
-    }
-  },
+    // 获取聊天记录
+    const chatHistory = await chatService.getChatHistory()
+    this.setData({
+      messages: chatHistory
+    })
 
-  // 加载提示词
-  async loadPrompt() {
-    const prompt = await userService.getPrompt()
+    // 获取提示词
+    const prompt = await chatService.getPrompt()
     this.setData({
       prompt: prompt
     })
-  },
 
-  // 获取推荐问题
-  async getRecommendedQuestions(messages, prompt) {
-    const recommendedQuestions = await aiService.generateRecommendedQuestions(messages, prompt)
+    // 获取默认推荐问题
+    const defaultRecommendedQuestions = await aiService.getDefaultRecommendedQuestions()
     this.setData({
-      recommendedQuestions: recommendedQuestions
+      recommendedQuestions: defaultRecommendedQuestions
     })
+  },
+  
+  async onShow() {
+    const { isLoggedIn } = app.globalData
+    // 判断登录状态是否发生变化
+    if (isLoggedIn !== this.data.isLoggedIn) {
+      if (isLoggedIn) {
+        // 获取聊天记录
+        const chatHistory = await chatService.getChatHistory()
+        // 获取提示词
+        const prompt = await chatService.getPrompt()
+        // 获取默认推荐问题
+        const defaultRecommendedQuestions = await aiService.getDefaultRecommendedQuestions()
+        this.setData({
+          isLoggedIn: isLoggedIn,
+          messages: chatHistory,
+          prompt: prompt,
+          recommendedQuestions: defaultRecommendedQuestions
+        })
+      }
+
+      return
+    }
   },
 
   onInputChange(e) {
@@ -175,14 +145,6 @@ Page({
         this.scrollToBottom()
       })
       
-      // 准备上下文信息
-      const contextInfo = {
-        isLoggedIn: this.data.isLoggedIn,
-        hasPersonalInfo: this.data.hasPersonalInfo,
-        healthRecords: this.data.healthRecords,
-        currentModel: this.data.currentModel
-      }
-      
       // 创建一个变量来跟踪是否已经创建了消息
       let messageCreated = false
       
@@ -190,7 +152,8 @@ Page({
       await aiService.generateAIResponse(
         this.data.messages, // 使用当前所有消息
         userQuery,
-        contextInfo,
+        this.data.prompt['default_prompt'],
+        this.data.currentModelName,
         (text) => {
           // 如果用户已经终止了回复生成，则不再更新消息
           if (this.data.isGeneratingStopped) {
@@ -200,15 +163,10 @@ Page({
           // 如果是第一次收到内容，创建新消息
           if (!messageCreated) {
             const aiMessageId = this.data.loadingMessageId
-            // 去除Markdown元素
-            const processedText = markdownUtil.stripMarkdown(text);
-            const initialAiMessage = messageModel.createSystemMessage(aiMessageId, processedText)
+            const initialAiMessage = messageModel.createSystemMessage(aiMessageId, text)
             
             this.setData({
               messages: [...this.data.messages, initialAiMessage]
-            }, () => {
-              // 滚动到底部
-              this.scrollToBottom()
             })
             
             messageCreated = true
@@ -225,7 +183,7 @@ Page({
       }
       
       // 先生成新的推荐问题，传递上下文信息
-      const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages, contextInfo)
+      const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
       this.setData({ recommendedQuestions })
       
       // 然后再设置isLoading为false并滚动到底部
@@ -265,22 +223,25 @@ Page({
 
   // 更新消息内容
   updateMessageContent(text) {
-    const updatedMessages = [...this.data.messages]
-    const lastMessage = updatedMessages[updatedMessages.length - 1]
+    const messages = [...this.data.messages];
+    const [lastMessage] = messages.slice(-1);
     
-    if (lastMessage) {
-      // 检查文本是否包含Markdown元素并去除
-      const processedText = markdownUtil.stripMarkdown(text);
-      
-      // 更新内容
-      lastMessage.content += processedText
-      
+    if (lastMessage) {     
+      // 直接修改消息内容（ immutable 更新）
+      const newMessage = { 
+        ...lastMessage,
+        content: lastMessage.content + text 
+      };
+
       this.setData({
-        messages: updatedMessages
-      })
+        messages: [
+          ...messages.slice(0, -1),
+          newMessage
+        ]
+      });
       
       // 保存聊天记录
-      chatService.saveChatHistory(updatedMessages)
+      chatService.saveChatHistory(messages);
     }
   },
 
@@ -333,7 +294,7 @@ Page({
             })
             
             // 生成新的推荐问题
-            aiService.generateRecommendedQuestions([]).then(questions => {
+            aiService.generateRecommendedQuestions([], this.data.prompt['recommended_questions']).then(questions => {
               this.setData({
                 recommendedQuestions: questions
               });
@@ -353,27 +314,26 @@ Page({
   
   // 选择模型
   selectModel(e) {
-    const modelId = e.currentTarget.dataset.model;
-    this.switchModel(modelId);
+    const model_name = e.currentTarget.dataset.model;
+    this.switchModel(model_name);
     this.setData({
       showModelSelector: false
     });
   },
   
   // 切换模型类型
-  switchModel(modelId) {
+  switchModel(model_name) {
     // 检查提供的模型类型是否有效
-    const modelConfig = MODEL_CONFIG[modelId];
+    const modelConfig = MODEL_CONFIG[model_name];
     
     if (modelConfig) {
       this.setData({
-        currentModel: modelId,
         currentModelName: modelConfig.name
       });
       
       // 保存用户选择的模型到本地存储
       try {
-        wx.setStorageSync('lastUsedModel', modelId);
+        wx.setStorageSync('lastUsedModel', model_name);
       } catch (error) {
         Logger.error('保存模型选择时出错:', error);
       }
@@ -386,7 +346,7 @@ Page({
       });
       
       // 记录模型切换日志
-      Logger.info(`模型已切换至 ${modelConfig.name} (${modelConfig.apiModel})`);
+      Logger.info(`模型已切换至 ${modelConfig.name} (${modelConfig.api})`);
     } else {
       // 显示错误提示
       wx.showToast({
@@ -421,7 +381,6 @@ Page({
     if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
       const modelConfig = MODEL_CONFIG[lastUsedModel]
       this.setData({ 
-        currentModel: lastUsedModel,
         currentModelName: modelConfig.name
       })
       Logger.info(`已恢复上次使用的模型: ${lastUsedModel} (${modelConfig.name})`)
@@ -436,35 +395,6 @@ Page({
       inputValue: ''
     });
     Logger.debug('用户清空了输入框');
-  },
-
-  // 加载聊天记录
-  async loadChatHistory() {
-    try {
-      const res = await wx.cloud.callFunction({
-        name: CLOUD_FUNCTIONS.GET_CHAT_HISTORY
-      })
-      this.setData({
-        messages: res.result.lists,
-        currentModel: res.result.model_name
-      })
-      // 确保数据加载完成后再滚动到底部
-      this.scrollToBottom()
-    } catch (error) {
-      Logger.error('加载聊天记录失败:', error)
-      this.showErrorToast('聊天记录加载异常')
-    }
-  },
-
-  // 获取提示词
-  async getPrompt() {
-    const res = await wx.cloud.callFunction({
-      name: CLOUD_FUNCTIONS.GET_PROMPT,
-      data: {
-        prompt_type: 'chat'
-      }
-    })  
-    this.setData({ prompt: res.result })
   },
   
   // 检查消息是否已收藏

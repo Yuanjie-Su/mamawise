@@ -47,18 +47,22 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 
+const promptsCollection = db.collection('prompts')
+
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   const _openid = wxContext.OPENID
 
-  const result = await db.collection('prompts').where({
-    _openid: _openid,
-  }).get()
-
-  if (result.data.length === 0) {
-    return {}
+  try {
+    const result = await promptsCollection.where({
+      _openid: _openid,
+    }).get()
+    return result.data[0]?.prompt ?? {}
+  } catch (error) {
+    return { 
+      code: 500,
+      message: '获取提示词失败，请稍后再试',
+      error: error.message
+    }
   }
-
-  return result.data[0].prompt
 }
-

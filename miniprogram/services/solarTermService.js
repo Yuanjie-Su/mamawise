@@ -3,8 +3,6 @@
  * 负责获取和管理节气信息
  */
 
-import Logger from '../utils/logger';
-
 /**
  * 获取节气信息
  * @returns {String} 当前节气名称
@@ -16,7 +14,6 @@ function getSolarTermInfo() {
   
   let solarTerm = '';
   
-  // 简化的节气判断（实际应用中应该使用更精确的计算方法）
   if ((month === 2 && day >= 3 && day <= 5) || (month === 2 && day === 6 && today.getHours() < 12)) {
     solarTerm = '立春';
   } else if ((month === 2 && day >= 18 && day <= 20) || (month === 2 && day === 21 && today.getHours() < 12)) {
@@ -65,9 +62,6 @@ function getSolarTermInfo() {
     solarTerm = '小寒';
   } else if ((month === 1 && day >= 20 && day <= 22) || (month === 1 && day === 23 && today.getHours() < 12)) {
     solarTerm = '大寒';
-  } else {
-    // 如果不在节气日期范围内，显示最近的节气
-    solarTerm = '节气间';
   }
   
   return solarTerm;

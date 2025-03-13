@@ -26,26 +26,10 @@ App({
     })
 
     // 设置全局数据
-    this.setGlobalData()
-  },
-
-  /** 
-   * 设置全局数据
-   */
-  setGlobalData() {
-    // 从本地存储获取用户登录状态
-    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS)
-    this.globalData.loginStatus = loginStatus
-
-    // 从本地存储获取健康记录
-    const healthRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS)
-    this.globalData.healthRecords = healthRecords
-    this.globalData.hasHealthRecords = !!healthRecords
+    this.globalData.isLoggedIn = wx.getStorageSync(STORAGE_KEYS.IS_LOGGED_IN) || false   // 登录状态
   },
 
   globalData: {
-    loginStatus: false,
-    hasHealthRecords: false,
-    healthRecords: null,
+    isLoggedIn: false,
   }
 })
