@@ -8,11 +8,12 @@ const APP_VERSION = '1.0.0';
 // 缓存键名
 const STORAGE_KEYS = {
   USER_INFO: 'userInfo',         // 用户信息
-  IS_LOGGED_IN: 'isLoggedIn',  // 登录状态
+  IS_LOGGED_IN: 'isLoggedIn',    // 登录状态
   CURRENT_MODEL: 'currentModel', // 当前模型
-  CHAT_HISTORY: 'chatHistory',  // 聊天历史
-  PROMPT: 'prompt',             // 提示词
+  CHAT_HISTORY: 'chatHistory',   // 聊天历史
+  PROMPT: 'prompt',              // 提示词
   HEALTH_RECORDS: 'healthRecords', // 健康记录
+  FAVORITES: 'favorites', // 收藏
 };
 
 // API配置

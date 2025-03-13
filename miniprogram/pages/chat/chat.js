@@ -159,11 +159,14 @@ Page({
           if (this.data.isGeneratingStopped) {
             return;
           }
+
+          // 去除markdown语法
+          const formattedText = markdownUtil.stripMarkdown(text)
           
           // 如果是第一次收到内容，创建新消息
           if (!messageCreated) {
             const aiMessageId = this.data.loadingMessageId
-            const initialAiMessage = messageModel.createSystemMessage(aiMessageId, text)
+            const initialAiMessage = messageModel.createSystemMessage(aiMessageId, formattedText)
             
             this.setData({
               messages: [...this.data.messages, initialAiMessage]
@@ -172,7 +175,7 @@ Page({
             messageCreated = true
           } else {
             // 否则更新现有消息
-            this.updateMessageContent(text)
+            this.updateMessageContent(formattedText)
           }
         }
       )
@@ -396,37 +399,6 @@ Page({
     });
     Logger.debug('用户清空了输入框');
   },
-  
-  // 检查消息是否已收藏
-  checkFavoritedMessages(messages) {
-    // 直接从本地存储获取登录状态
-    const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
-    
-    // 只有在用户已登录的情况下才检查
-    if (!loginStatus) return;
-    
-    // 从本地存储获取收藏列表
-    wx.getStorage({
-      key: 'favorites',
-      success: (res) => {
-        const favorites = res.data || [];
-        
-        // 遍历消息，检查是否已收藏
-        messages.forEach(message => {
-          // 只检查系统消息（AI回复）
-          if (message.type === 'system') {
-            // 检查是否有相同内容的收藏
-            const isFavorited = favorites.some(fav => 
-              fav.content === message.content || fav.messageId === message.id
-            );
-            
-            // 设置收藏状态
-            message.isFavorited = isFavorited;
-          }
-        });
-      }
-    });
-  },
 
   // 复制消息内容
   copyMessage(e) {
@@ -555,215 +527,76 @@ Page({
     });
   },
   
-  // 收藏消息
-  async toggleFavorite(e) {
-    const content = e.currentTarget.dataset.content;
-    const messageId = e.currentTarget.dataset.id;
+  // 从内容中提取标题和正文
+  extractTitleAndContent(content) {
+    let title = '收藏内容';
+    let contentProcessed = content;
     
-    // // 直接从本地存储获取登录状态
-    // const loginStatus = wx.getStorageSync(STORAGE_KEYS.LOGIN_STATUS) || false;
-    
-    // // 检查用户是否已登录
-    // if (!loginStatus) {
-    //   wx.showModal({
-    //     title: '提示',
-    //     content: '请先登录后再使用收藏功能',
-    //     confirmText: '去登录',
-    //     success: (res) => {
-    //       if (res.confirm) {
-    //         wx.navigateTo({
-    //           url: '/pages/login/login'
-    //         });
-    //       }
-    //     }
-    //   });
-    //   return;
-    // }
-    
-    // // 更新登录状态
-    // if (this.data.isLoggedIn !== loginStatus) {
-    //   this.setData({
-    //     isLoggedIn: loginStatus
-    //   });
-    // }
-    
-    // 获取当前消息
-    const messages = [...this.data.messages];
-    const messageIndex = messages.findIndex(msg => msg.id === messageId);
-    
-    if (messageIndex === -1) return;
-    
-    const message = messages[messageIndex];
-    
-    // 如果消息已经收藏，则不再处理
-    if (message.isFavorited) {
-      return;
+    if (content.includes('---')) {
+      const parts = content.split('---');
+      if (parts.length >= 2) {
+        const possibleTitle = parts[parts.length - 1].trim();
+        if (possibleTitle && possibleTitle.length <= 50) {
+          title = possibleTitle;
+          contentProcessed = parts.slice(0, parts.length - 1).join('---').trim();
+        }
+      }
     }
     
+    return { title, content: contentProcessed };
+  },
+
+  // 收藏消息
+  async toggleFavorite(e) {
+    const { content, id: messageId } = e.currentTarget.dataset;
+    
+    // 获取并更新消息状态
+    const messages = [...this.data.messages];
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1 || messages[messageIndex].isFavorited) return;
+    
+    // 立即更新UI状态
+    messages[messageIndex].isFavorited = true;
+    this.setData({ messages });
+    
     try {
-      // 立即设置为已收藏状态，禁用按钮
-      message.isFavorited = true;
-      this.setData({ messages });
-      
-      // 获取当前时间作为收藏时间
+      // 准备收藏数据
       const now = new Date();
-      const timestamp = now.toISOString();
-      const formattedDate = this.formatDate(now);
+      const { title, content: contentProcessed } = this.extractTitleAndContent(content);
+      const newFavorite = {
+        id: Date.now().toString(),
+        title,
+        content: contentProcessed,
+        date: this.formatDate(now),
+        timestamp: now.toISOString(),
+        messageId
+      };
       
-      // 从本地存储获取收藏列表
-      wx.getStorage({
-        key: 'favorites',
-        success: async (res) => {
-          let favorites = res.data || [];
-          
-          try {
-            // 提取标题和内容
-            let title = '收藏内容'; // 默认标题
-            let contentProcessed = content;
-            
-            // 尝试提取标题（标题在后，内容在前，以---分割）
-            if (content.includes('---')) {
-              const parts = content.split('---');
-              if (parts.length >= 2) {
-                const possibleTitle = parts[parts.length - 1].trim();
-                if (possibleTitle && possibleTitle.length <= 50) {
-                  title = possibleTitle;
-                  // 移除最后一部分（标题部分）
-                  contentProcessed = parts.slice(0, parts.length - 1).join('---').trim();
-                }
-              }
-            } 
-            
-            Logger.info('提取的标题和内容', { title, contentLength: contentProcessed.length });
+      // 获取现有收藏列表
+      const favorites = wx.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
+      favorites.push(newFavorite);
 
-            // 创建新的收藏项
-            const newFavorite = {
-              id: Date.now().toString(), // 使用时间戳作为唯一ID
-              title: title, // 使用提取的标题
-              content: contentProcessed, // 使用处理后的内容
-              date: formattedDate,
-              timestamp: timestamp,
-              messageId: messageId // 保存消息ID，用于标记已收藏的消息
-            };
-            
-            // 添加到收藏列表
-            favorites.push(newFavorite);
-            
-            // 更新本地存储
-            wx.setStorage({
-              key: 'favorites',
-              data: favorites,
-              success: () => {
-                wx.showToast({
-                  title: '收藏成功',
-                  icon: 'success'
-                });
-              },
-              fail: (err) => {
-                Logger.error('保存收藏失败', err);
-                wx.showToast({
-                  title: '收藏失败',
-                  icon: 'none'
-                });
-                
-                // 重置收藏状态
-                message.isFavorited = false;
-                this.setData({ messages });
-              }
-            });
-          } catch (error) {
-            Logger.error('处理收藏内容失败', error);
-            // 重置收藏状态
-            message.isFavorited = false;
-            this.setData({ messages });
-          }
-        },
-        fail: () => {
-          // 如果没有收藏列表
-          // 初始化收藏列表
-          let favorites = [];
-
-          // 处理收藏数据
-          try {
-            // 提取标题和内容
-            let title = '收藏内容'; // 默认标题
-            let contentProcessed = content;
-            
-            // 尝试提取标题（标题在后，内容在前，以---分割）
-            if (content.includes('---')) {
-              const parts = content.split('---');
-              if (parts.length >= 2) {
-                const possibleTitle = parts[parts.length - 1].trim();
-                if (possibleTitle && possibleTitle.length <= 50) {
-                  title = possibleTitle;
-                  // 移除最后一部分（标题部分）
-                  contentProcessed = parts.slice(0, parts.length - 1).join('---').trim();
-                }
-              }
-            } 
-            
-            Logger.info('提取的标题和内容', { title, contentLength: contentProcessed.length });
-
-            // 创建新的收藏项
-            const newFavorite = {
-              id: Date.now().toString(), // 使用时间戳作为唯一ID
-              title: title, // 使用提取的标题
-              content: contentProcessed, // 使用处理后的内容
-              date: formattedDate,
-              timestamp: timestamp,
-              messageId: messageId // 保存消息ID，用于标记已收藏的消息
-            };
-            
-            // 添加到收藏列表
-            favorites.push(newFavorite);
-            
-            // 更新本地存储
-            wx.setStorage({
-              key: 'favorites',
-              data: favorites,
-              success: () => {
-                wx.showToast({
-                  title: '收藏成功',
-                  icon: 'success'
-                });
-              },
-              fail: (err) => {
-                Logger.error('保存收藏失败', err);
-                wx.showToast({
-                  title: '收藏失败',
-                  icon: 'none'
-                });
-                
-                // 重置收藏状态
-                message.isFavorited = false;
-                this.setData({ messages });
-              }
-            });
-          } catch (error) {
-            Logger.error('处理收藏内容失败', error);
-            wx.showToast({
-              title: '收藏失败',
-              icon: 'none',
-              duration: 1500
-            });
-            // 重置收藏状态
-            message.isFavorited = false;
-            this.setData({ messages });
-          }
-        }
+      // 保存到本地存储
+      wx.setStorageSync(STORAGE_KEYS.FAVORITES, favorites);
+      
+      wx.showToast({
+        title: '收藏成功',
+        icon: 'success'
       });
     } catch (error) {
-      Logger.error('收藏失败:', error);
+      Logger.error('收藏失败', error);
       wx.showToast({
         title: '收藏失败',
-        icon: 'none',
-        duration: 1500
+        icon: 'none'
       });
       
       // 重置收藏状态
-      message.isFavorited = false;
+      messages[messageIndex].isFavorited = false;
       this.setData({ messages });
     }
+
+    // 保存聊天记录
+    chatService.saveChatHistory(this.data.messages);
   },
   
   // 生成分享图片
@@ -1021,4 +854,5 @@ Page({
       currentY += lineHeight; // 段落之间增加一行间距
     }
   },
+
 }) 

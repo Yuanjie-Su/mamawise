@@ -1,4 +1,5 @@
 const app = getApp();
+import markdownUtil from '../../utils/markdownUtil';
 
 Page({
   /**
@@ -9,6 +10,10 @@ Page({
     loading: true
   },
 
+  // =============================================
+  // 页面生命周期函数
+  // =============================================
+  
   /**
    * 生命周期函数--监听页面加载
    */
@@ -23,30 +28,52 @@ Page({
     // 每次页面显示时重新加载收藏，确保数据最新
     this.loadFavorites();
   },
+  
+  /**
+   * 用户点击右上角分享
+   */
+  onShareAppMessage: function (res) {
+    if (res.from === 'button') {
+      const id = res.target.dataset.id;
+      const favorite = this.data.favorites.find(item => item.id === id);
+      
+      if (favorite) {
+        return {
+          title: '妈妈智慧 - ' + favorite.content.substring(0, 30) + '...',
+          path: '/pages/favorite-detail/favorite-detail?id=' + id + '&shared=true'
+        };
+      }
+    }
+    
+    // 默认分享
+    return {
+      title: '妈妈智慧 - 我的收藏',
+      path: '/pages/favorites/favorites'
+    };
+  },
 
+  // =============================================
+  // 数据加载函数
+  // =============================================
+  
   /**
    * 加载收藏列表
    */
   loadFavorites: function () {
-    const that = this;
-    that.setData({ loading: true });
-
-    // 从本地存储获取收藏列表
+    this.setData({ loading: true });
+    
     wx.getStorage({
       key: 'favorites',
-      success: function (res) {
-        // 按时间倒序排列，最新的在前面
+      success: (res) => {
         const favorites = res.data || [];
-        favorites.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
-        that.setData({
+        this.setData({
           favorites: favorites,
           loading: false
         });
       },
-      fail: function () {
-        // 如果没有收藏数据，初始化为空数组
-        that.setData({
+      fail: () => {
+        this.setData({
           favorites: [],
           loading: false
         });
@@ -54,6 +81,10 @@ Page({
     });
   },
 
+  // =============================================
+  // 收藏操作函数
+  // =============================================
+  
   /**
    * 查看收藏详情
    */
@@ -104,6 +135,10 @@ Page({
     });
   },
 
+  // =============================================
+  // 分享相关函数
+  // =============================================
+  
   /**
    * 分享收藏
    */
@@ -210,27 +245,4 @@ Page({
       }, 100);
     });
   },
-
-  /**
-   * 用户点击右上角分享
-   */
-  onShareAppMessage: function (res) {
-    if (res.from === 'button') {
-      const id = res.target.dataset.id;
-      const favorite = this.data.favorites.find(item => item.id === id);
-      
-      if (favorite) {
-        return {
-          title: '妈妈智慧 - ' + favorite.content.substring(0, 30) + '...',
-          path: '/pages/favorite-detail/favorite-detail?id=' + id + '&shared=true'
-        };
-      }
-    }
-    
-    // 默认分享
-    return {
-      title: '妈妈智慧 - 我的收藏',
-      path: '/pages/favorites/favorites'
-    };
-  }
 }); 

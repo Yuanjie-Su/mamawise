@@ -19,6 +19,10 @@ Page({
     hasChanges: false // 是否有未保存的更改
   },
 
+  // =============================================
+  // 页面生命周期函数
+  // =============================================
+  
   /**
    * 生命周期函数--监听页面加载
    */
@@ -61,7 +65,43 @@ Page({
       this.saveContent(true);
     }
   },
+  
+  /**
+   * 监听用户点击右上角返回按钮或物理返回键
+   */
+  onBackPress: function() {
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    return false; // 返回false，由系统执行返回逻辑
+  },
+  
+  /**
+   * 用户点击右上角分享
+   */
+  onShareAppMessage: function() {
+    const { editData } = this.data;
+    
+    // 如果有未保存的更改，先保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    
+    // 使用最新的编辑数据
+    const title = editData.title || '收藏内容';
+    
+    return {
+      title: title,
+      path: `/pages/favorite-detail/favorite-detail?id=${this.data.id}&shared=true`,
+      imageUrl: '/images/share-cover.png'
+    };
+  },
 
+  // =============================================
+  // 数据加载函数
+  // =============================================
+  
   /**
    * 加载收藏详情
    */
@@ -104,16 +144,9 @@ Page({
     });
   },
 
-  /**
-   * 返回收藏列表
-   */
-  backToList: function () {
-    // 如果有未保存的更改，则保存
-    if (this.data.hasChanges) {
-      this.saveContent(true);
-    }
-    wx.navigateBack();
-  },
+  // =============================================
+  // 编辑和保存函数
+  // =============================================
   
   /**
    * 标题输入事件
@@ -231,6 +264,21 @@ Page({
   },
   
   /**
+   * 返回收藏列表
+   */
+  backToList: function () {
+    // 如果有未保存的更改，则保存
+    if (this.data.hasChanges) {
+      this.saveContent(true);
+    }
+    wx.navigateBack();
+  },
+
+  // =============================================
+  // 分享相关函数
+  // =============================================
+  
+  /**
    * 分享收藏
    */
   shareFavorite: function() {
@@ -268,36 +316,4 @@ Page({
       }
     });
   },
-  
-  /**
-   * 用户点击右上角分享
-   */
-  onShareAppMessage: function() {
-    const { editData } = this.data;
-    
-    // 如果有未保存的更改，先保存
-    if (this.data.hasChanges) {
-      this.saveContent(true);
-    }
-    
-    // 使用最新的编辑数据
-    const title = editData.title || '收藏内容';
-    
-    return {
-      title: title,
-      path: `/pages/favorite-detail/favorite-detail?id=${this.data.id}&shared=true`,
-      imageUrl: '/images/share-cover.png'
-    };
-  },
-  
-  /**
-   * 监听用户点击右上角返回按钮或物理返回键
-   */
-  onBackPress: function() {
-    // 如果有未保存的更改，则保存
-    if (this.data.hasChanges) {
-      this.saveContent(true);
-    }
-    return false; // 返回false，由系统执行返回逻辑
-  }
 }); 

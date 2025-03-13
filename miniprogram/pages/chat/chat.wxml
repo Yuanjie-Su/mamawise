@@ -64,7 +64,7 @@
         <!-- 系统消息（AI回复）只有当有内容时才显示 -->
         <view class="message-item system-message" wx:if="{{item.type === 'system'}}">
           <view class="message-content system-content">
-            <text class="message-text" user-select="true">{{item.content}}</text>
+            <rich-text class="message-text" user-select="true" nodes="{{item.formattedContent || item.content}}"></rich-text>
             
             <!-- 只在AI回复消息中显示操作按钮，且不是正在加载的消息 -->
             <view class="message-actions" wx:if="{{item.id !== loadingMessageId}}">

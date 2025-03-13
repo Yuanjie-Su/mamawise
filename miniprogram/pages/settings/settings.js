@@ -11,6 +11,10 @@ Page({
     isLoggedIn: false
   },
 
+  // =============================================
+  // 页面生命周期函数
+  // =============================================
+  
   onLoad(options) {
     Logger.info('设置页面加载')
     this.calculateCacheSize()
@@ -32,6 +36,10 @@ Page({
       }
     }
   },
+  
+  // =============================================
+  // 用户相关函数
+  // =============================================
   
   // 退出登录
   async logout() {
@@ -60,28 +68,9 @@ Page({
     })
   },
   
-  // 滚动到"关于"部分
-  scrollToAbout() {
-    wx.createSelectorQuery()
-      .select('.settings-section')
-      .boundingClientRect(rect => {
-        if (rect) {
-          wx.pageScrollTo({
-            scrollTop: rect.top,
-            duration: 300
-          })
-        }
-      })
-      .exec()
-  },
-  
-  // 切换显示/隐藏关于信息
-  toggleAboutInfo() {
-    this.setData({
-      showAboutInfo: !this.data.showAboutInfo
-    })
-    Logger.debug('用户切换关于信息显示状态', { showAboutInfo: this.data.showAboutInfo })
-  },
+  // =============================================
+  // 缓存管理函数
+  // =============================================
   
   // 计算缓存大小
   calculateCacheSize() {
@@ -145,6 +134,33 @@ Page({
         }
       }
     })
+  },
+  
+  // =============================================
+  // 导航和界面相关函数
+  // =============================================
+  
+  // 滚动到"关于"部分
+  scrollToAbout() {
+    wx.createSelectorQuery()
+      .select('.settings-section')
+      .boundingClientRect(rect => {
+        if (rect) {
+          wx.pageScrollTo({
+            scrollTop: rect.top,
+            duration: 300
+          })
+        }
+      })
+      .exec()
+  },
+  
+  // 切换显示/隐藏关于信息
+  toggleAboutInfo() {
+    this.setData({
+      showAboutInfo: !this.data.showAboutInfo
+    })
+    Logger.debug('用户切换关于信息显示状态', { showAboutInfo: this.data.showAboutInfo })
   },
   
   // 查看隐私政策

@@ -398,9 +398,13 @@
           <textarea class="form-textarea" placeholder="请输入备注信息（可选）" value="{{medicationForm.notes}}" bindinput="onMedicationInputChange" data-field="notes" />
         </view>
       </view>
-      <view class="form-footer">
-        <button class="cancel-btn" bindtap="hideMedicationForm">取消</button>
-        <button class="submit-btn" bindtap="saveMedication">保存</button>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hideMedicationForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="saveMedication">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
       </view>
     </view>
   </view>
@@ -465,9 +469,13 @@
           <textarea class="form-textarea" placeholder="请输入备注信息（可选）" value="{{vitalsForm.notes}}" bindinput="onVitalsInputChange" data-field="notes" />
         </view>
       </view>
-      <view class="form-footer">
-        <button class="cancel-btn" bindtap="hideVitalsForm">取消</button>
-        <button class="submit-btn" bindtap="saveVitals">保存</button>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hideVitalsForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="saveVitals">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
       </view>
     </view>
   </view>
@@ -589,9 +597,13 @@
           </view>
         </view>
       </view>
-      <view class="form-footer">
-        <button class="cancel-btn" bindtap="hideOtherInfoForm">取消</button>
-        <button class="submit-btn" bindtap="saveOtherInfo">保存</button>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hideOtherInfoForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="saveOtherInfo">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
       </view>
     </view>
   </view>
@@ -625,9 +637,13 @@
           <view class="form-tip">选择孕周后会自动计算预产期，您也可以手动选择</view>
         </view>
       </view>
-      <view class="form-footer">
-        <button class="cancel-btn" bindtap="hidePregnancyInfoForm">取消</button>
-        <button class="submit-btn" bindtap="savePregnancyInfo">保存</button>
+      <view class="form-footer allergy-form-footer">
+        <view class="icon-btn cancel-icon-btn" bindtap="hidePregnancyInfoForm">
+          <image class="btn-icon" src="/images/icons/cancel.png" mode="aspectFit"></image>
+        </view>
+        <view class="icon-btn save-icon-btn" bindtap="savePregnancyInfo">
+          <image class="btn-icon" src="/images/icons/finished.png" mode="aspectFit"></image>
+        </view>
       </view>
     </view>
   </view>
