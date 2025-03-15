@@ -57,11 +57,13 @@ exports.main = async (event, context) => {
     const result = await promptsCollection.where({
       _openid: _openid,
     }).get()
-    return result.data[0]?.prompt ?? {}
+    return { 
+      success: true,
+      prompt: result.data[0]?.prompt ?? {}
+    }
   } catch (error) {
     return { 
-      code: 500,
-      message: '获取提示词失败，请稍后再试',
+      success: false,
       error: error.message
     }
   }

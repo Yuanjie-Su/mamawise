@@ -5,6 +5,10 @@
 //     "nickName": "张三",
 //     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
 //   }
+//   "prompt": {
+//     "prefix": "你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。"
+//     "healthRecord": ""
+//   }
 // }
 // 数据库中没有_openid对应的记录，返回传入的userInfo；否则返回数据库中的userInfo
 // 返回示例
@@ -14,6 +18,10 @@
 //     "nickName": "张三",
 //     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
 //   }
+//   "prompt": {
+//     "prefix": "你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。"
+//     "healthRecord": ""
+//   }
 //   "error": null
 // }
 
@@ -21,12 +29,10 @@ const cloud = require('wx-server-sdk')
 
 // 环境初始化
 cloud.init({
-  env: cloud.DYNAMIC_CURRENT_ENV
+  env: cloud.DYNAMIC_CURRENT_ENV,
 })
 
 const db = cloud.database()
-
-const userCollection = db.collection('users')
 
 /**
  * 登录处理核心逻辑
@@ -39,7 +45,7 @@ exports.main = async (event, context) => {
     const { userInfo } = event
     // 获取openid
     const openid = cloud.getWXContext().OPENID
-    
+
     // 用户数据操作
     const res = await handleUserOperation(openid, userInfo)
 
@@ -51,17 +57,48 @@ exports.main = async (event, context) => {
 
 /* 用户数据操作核心逻辑 */
 async function handleUserOperation(openid, userInfo) {
+  const userCollection = db.collection('users')
+  const promptCollection = db.collection('prompts')
   // 查询现有用户
-  const userDoc = await userCollection.where({
-    _openid: openid
-  }).get()
+  const userDoc = await userCollection
+    .where({
+      _openid: openid,
+    })
+    .get()
 
   // 用户存在时返回数据
   if (userDoc.data.length > 0) {
-    return buildSuccessResponse({
-      nickName: userDoc.data[0].nickName,
-      avatarUrl: userDoc.data[0].avatarUrl,
-    })
+    const promptDoc = await promptCollection
+      .where({
+        _openid: openid,
+      })
+      .get()
+
+    if (promptDoc.data.length > 0) {
+      return buildSuccessResponse(
+        {
+          nickName: userDoc.data[0].nickName,
+          avatarUrl: userDoc.data[0].avatarUrl,
+        },
+        promptDoc.data[0].prompt
+      )
+    } else {
+      // 建立用户的prompt
+      await promptCollection.add({
+        data: {
+          _openid: openid,
+          prompt: '',
+        },
+        setUnionId: false,
+      })
+      return buildSuccessResponse(
+        {
+          nickName: userDoc.data[0].nickName,
+          avatarUrl: userDoc.data[0].avatarUrl,
+        },
+        ''
+      )
+    }
   }
 
   // 用户不存在时创建
@@ -71,9 +108,18 @@ async function handleUserOperation(openid, userInfo) {
       nickName: userInfo.nickName,
       avatarUrl: userInfo.avatarUrl,
     },
-    setUnionId: false
+    setUnionId: false,
   })
-  
+
+  // 建立用户的prompt
+  await promptCollection.add({
+    data: {
+      _openid: openid,
+      prompt: '',
+    },
+    setUnionId: false,
+  })
+
   // 返回成功响应
   return buildSuccessResponse(userInfo)
 }
@@ -83,33 +129,34 @@ function buildSuccessResponse(userData) {
   return {
     success: true,
     userInfo: userData,
-    error: null
+    prompt: '',
+    error: null,
   }
 }
 
 /* 错误响应构建工具函数 */
 function buildErrorResponse(error) {
   let errMsg = error.message || '未知错误'
-  
+
   // 错误代码映射表
   const errorCodeMap = {
     '-604100': '云函数未找到，请检查函数名称和部署状态',
-    '403': '权限不足，请检查云函数权限配置',
-    '500': '服务器内部错误，请联系管理员',
-    'invalid_code': '无效的code参数',
-    'user_not_found': '用户不存在'
+    403: '权限不足，请检查云函数权限配置',
+    500: '服务器内部错误，请联系管理员',
+    invalid_code: '无效的code参数',
+    user_not_found: '用户不存在',
   }
-  
+
   if (errorCodeMap[error.code]) {
     errMsg = errorCodeMap[error.code]
   }
-  
+
   return {
     success: false,
     userInfo: null,
     error: {
       code: error.code,
-      message: errMsg
-    }
+      message: errMsg,
+    },
   }
 }

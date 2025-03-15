@@ -46,12 +46,6 @@
   "useExtendedLib": {
     "weui": true
   },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "您的位置信息将用于获取当前天气状况"
-    }
-  },
   "subPackages": [],
-  "subpackages": [],
   "usingComponents": {}
 } 

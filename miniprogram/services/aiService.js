@@ -3,14 +3,14 @@
  * 负责处理与AI模型交互的相关功能
  */
 
-import Logger from '../utils/logger';
-import appConfig from '../config/appConfig';
+import Logger from '../utils/logger'
+import appConfig from '../config/appConfig'
 
 // 从 appConfig 中获取需要的配置
-const { CLOUD_FUNCTIONS, DEFAULT_AI_CONFIG, MODEL_CONFIG } = appConfig;
+const { DEFAULT_AI_CONFIG, MODEL_CONFIG } = appConfig
 
 // 控制生成状态的标志
-let isGenerationStopped = false;
+let isGenerationStopped = false
 
 /**
  * 生成AI回复
@@ -22,36 +22,36 @@ let isGenerationStopped = false;
 async function generateAIResponse(messages, userQuery, prompt, model_name, onProgress) {
   try {
     // 重置停止标志
-    isGenerationStopped = false;
+    isGenerationStopped = false
 
     // 用于跟踪是否已接收到第一段内容
-    let hasReceivedFirstContent = false;
+    let hasReceivedFirstContent = false
 
     // 构建消息历史
     const messageHistory = messages.map(msg => ({
       role: msg.type === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }));
+      content: msg.content,
+    }))
 
     if (!prompt) {
-      prompt = DEFAULT_AI_CONFIG.PROMPT;
+      prompt = DEFAULT_AI_CONFIG.PROMPT
     }
 
     // 添加系统提示词
     messageHistory.unshift({
       role: 'system',
-      content: prompt
-    });
+      content: prompt,
+    })
 
     // 获取当前选择的模型配置
-    const modelConfig = MODEL_CONFIG[model_name];
+    const modelConfig = MODEL_CONFIG[model_name]
 
     if (!modelConfig) {
-      throw new Error(`未找到模型配置: ${model_name}`);
+      throw new Error(`未找到模型配置: ${model_name}`)
     }
 
     // 创建模型实例
-    const model = wx.cloud.extend.AI.createModel('deepseek');
+    const model = wx.cloud.extend.AI.createModel('deepseek')
 
     // 使用流式响应
     const res = await model.streamText({
@@ -61,47 +61,47 @@ async function generateAIResponse(messages, userQuery, prompt, model_name, onPro
           ...messageHistory,
           {
             role: 'user',
-            content: userQuery
-          }
-        ]
-      }
-    });
+            content: userQuery,
+          },
+        ],
+      },
+    })
 
     // 处理eventStream响应
     for await (let event of res.eventStream) {
       // 如果生成已被停止，中断循环
       if (isGenerationStopped) {
-        Logger.info('AI回复生成已被用户终止');
-        break;
+        Logger.info('AI回复生成已被用户终止')
+        break
       }
 
-      if (event.data === '[DONE]') break;
+      if (event.data === '[DONE]') break
 
-      const data = JSON.parse(event.data);
-      const text = data?.choices?.[0]?.delta?.content;
+      const data = JSON.parse(event.data)
+      const text = data?.choices?.[0]?.delta?.content
 
       if (text && onProgress) {
         // 去除开头的空白行
-        let processedText = text;
+        let processedText = text
         if (!hasReceivedFirstContent) {
-          processedText = text.replace(/^\n+/, '');
-          hasReceivedFirstContent = true;
+          processedText = text.replace(/^\n+/, '')
+          hasReceivedFirstContent = true
         }
 
-        onProgress(processedText);
+        onProgress(processedText)
       }
     }
 
-    return true;
+    return true
   } catch (error) {
     // 如果是因为用户终止而导致的错误，不需要抛出
     if (isGenerationStopped) {
-      Logger.info('AI回复生成已被用户终止');
-      return true;
+      Logger.info('AI回复生成已被用户终止')
+      return true
     }
 
-    Logger.error('生成AI回复时出错:', error);
-    throw error;
+    Logger.error('生成AI回复时出错:', error)
+    throw error
   }
 }
 
@@ -115,35 +115,35 @@ async function generateAIResponse(messages, userQuery, prompt, model_name, onPro
 async function generateRecommendedQuestions(messages, questionCount = 3) {
   try {
     // 系统提示词
-    let systemPrompt = '';
+    let systemPrompt = ''
     // 消息历史
-    let messageHistory = [];
+    let messageHistory = []
     // 检查是否有聊天记录
     if (messages.length > 0) {
       // 有历史聊天记录的情况
       systemPrompt = `基于以下聊天历史，生成${questionCount}个用户可能想继续问的问题。
       这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。
-      只返回问题，每行一个，不要有编号或其他格式。\n\n`;
-      
+      只返回问题，每行一个，不要有编号或其他格式。\n\n`
+
       // 获取最近的2条消息作为上下文
-      const recentMessages = messages.slice(-2);
+      const recentMessages = messages.slice(-2)
       // 构建消息历史
       messageHistory = recentMessages.map(msg => ({
         role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));  
+        content: msg.content,
+      }))
     } else {
       // 没有聊天记录的情况
       systemPrompt = `请为用户生成${questionCount}个关于孕期健康、胎儿发育或产后护理的初始问题。
       这些问题应该对孕产妇有帮助，并且能够引导用户开始对话。
-      只返回问题，每行一个，不要有编号或其他格式。\n\n`;
+      只返回问题，每行一个，不要有编号或其他格式。\n\n`
     }
 
     // 添加系统提示词
     messageHistory.unshift({
       role: 'system',
-      content: systemPrompt
-    });
+      content: systemPrompt,
+    })
 
     // // 使用当前选择的模型生成推荐问题,非流式
     // const model = wx.cloud.extend.AI.createModel("deepseek");
@@ -154,7 +154,7 @@ async function generateRecommendedQuestions(messages, questionCount = 3) {
     // });
 
     // 创建模型实例
-    const model = wx.cloud.extend.AI.createModel('deepseek');
+    const model = wx.cloud.extend.AI.createModel('deepseek')
 
     // 使用流式响应
     const res = await model.streamText({
@@ -164,51 +164,51 @@ async function generateRecommendedQuestions(messages, questionCount = 3) {
           ...messageHistory,
           {
             role: 'user',
-            content: ''
-          }
-        ]
-      }
-    });
+            content: '',
+          },
+        ],
+      },
+    })
 
-    let generatedText = '';
+    let generatedText = ''
     // 处理eventStream响应
     for await (let event of res.eventStream) {
-      if (event.data === '[DONE]') break;
+      if (event.data === '[DONE]') break
 
-      const data = JSON.parse(event.data);
-      const text = data?.choices?.[0]?.delta?.content;
+      const data = JSON.parse(event.data)
+      const text = data?.choices?.[0]?.delta?.content
 
       if (text) {
-        generatedText += text;
+        generatedText += text
       }
     }
 
     if (generatedText) {
       // 处理返回的文本，分割成问题列表
-      const questions = generatedText.split('\n').filter(q => q.trim().length > 0);
+      const questions = generatedText.split('\n').filter(q => q.trim().length > 0)
 
       // 如果生成的问题数量不足，从默认问题中补充
       if (questions.length < questionCount) {
-        Logger.info('生成的问题数量不足，从默认问题中补充');
-        const defaultQuestions = getDefaultQuestions();
+        Logger.info('生成的问题数量不足，从默认问题中补充')
+        const defaultQuestions = getDefaultQuestions()
         const additionalQuestions = getRandomItems(
-          defaultQuestions.filter(q => !questions.includes(q)), 
+          defaultQuestions.filter(q => !questions.includes(q)),
           questionCount - questions.length
-        );
-        return [...questions, ...additionalQuestions];
+        )
+        return [...questions, ...additionalQuestions]
       }
 
       // 如果生成的问题数量超过需要的数量，只返回需要的数量
-      return questions.slice(0, questionCount);
+      return questions.slice(0, questionCount)
     } else {
-      Logger.info('模型API调用失败，使用默认问题');
+      Logger.info('模型API调用失败，使用默认问题')
       // 如果API调用失败，使用默认问题
-      return getDefaultRecommendedQuestions();
+      return getDefaultRecommendedQuestions()
     }
   } catch (error) {
-    Logger.error('生成推荐问题失败', error);
+    Logger.error('生成推荐问题失败', error)
     // 出错时使用默认问题
-    return getDefaultRecommendedQuestions();
+    return getDefaultRecommendedQuestions()
   }
 }
 
@@ -218,31 +218,7 @@ async function generateRecommendedQuestions(messages, questionCount = 3) {
  * @returns {Promise<Array>} 返回推荐问题数组的Promise
  */
 function getDefaultRecommendedQuestions() {
-  try {
-    // 检查配置是否存在
-    if (!DEFAULT_AI_CONFIG || !DEFAULT_AI_CONFIG.RECOMMENDED_QUESTIONS) {
-      Logger.error('DEFAULT_RECOMMENDED_QUESTIONS 未定义，使用备用问题');
-      // 提供备用问题
-      const fallbackQuestions = [
-        '孕期应该如何保持健康的饮食习惯？',
-        '如何缓解孕期常见的不适症状？',
-        '孕期情绪波动如何调节？',
-        '如何科学安排产检时间？',
-        '孕期运动有哪些注意事项？'
-      ];
-      return getRandomItems(fallbackQuestions, 3);
-    }
-    
-    return getRandomItems(DEFAULT_AI_CONFIG.RECOMMENDED_QUESTIONS, 3);
-  } catch (error) {
-    Logger.error('获取默认推荐问题失败', error);
-    // 出错时返回备用问题
-    return [
-      '孕期应该如何保持健康的饮食习惯？',
-      '如何缓解孕期常见的不适症状？',
-      '孕期情绪波动如何调节？'
-    ];
-  }
+  return getRandomItems(DEFAULT_AI_CONFIG.RECOMMENDED_QUESTIONS, 3)
 }
 
 /**
@@ -252,19 +228,19 @@ function getDefaultRecommendedQuestions() {
  * @returns {Array} 随机选取的元素数组
  */
 function getRandomItems(array, count) {
-  const shuffled = array.slice();
-  let i = array.length;
-  let temp, index;
+  const shuffled = array.slice()
+  let i = array.length
+  let temp, index
 
   // Fisher-Yates 洗牌算法
   while (i--) {
-    index = Math.floor((i + 1) * Math.random());
-    temp = shuffled[index];
-    shuffled[index] = shuffled[i];
-    shuffled[i] = temp;
+    index = Math.floor((i + 1) * Math.random())
+    temp = shuffled[index]
+    shuffled[index] = shuffled[i]
+    shuffled[i] = temp
   }
 
-  return shuffled.slice(0, count);
+  return shuffled.slice(0, count)
 }
 
 /**
@@ -274,7 +250,7 @@ function getRandomItems(array, count) {
  */
 async function professionalizeContent(content) {
   try {
-    Logger.info('开始专业化处理内容');
+    Logger.info('开始专业化处理内容')
 
     // 构建提示词
     const prompt = `将以下内容转化为更专业、简洁且结构清晰的格式，适合参考。
@@ -283,61 +259,61 @@ async function professionalizeContent(content) {
     标题：[标题文本]
     内容：[处理后的内容]
     
-    原始内容：${content}`;
+    原始内容：${content}`
 
     // 调用deepseek-v3模型
-    const model = wx.cloud.extend.AI.createModel("deepseek");
+    const model = wx.cloud.extend.AI.createModel('deepseek')
     const res = await model.generateText({
-      model: "deepseek-v3",
-      messages: [{ role: "user", content: prompt }],
-    });
+      model: 'deepseek-v3',
+      messages: [{ role: 'user', content: prompt }],
+    })
 
     // 解析结果，提取标题和内容
-    const result = res.choices[0].message.content;
+    const result = res.choices[0].message.content
 
-    let title = '收藏内容';
-    let processedContent = content; // 默认使用原始内容
+    let title = '收藏内容'
+    let processedContent = content // 默认使用原始内容
 
     // 尝试提取标题（方法1：使用"标题："和"内容："标记）
-    const titleMatch = result.match(/标题：(.*?)[\n\r]/);
-    const contentMatch = result.match(/内容：([\s\S]*)/);
+    const titleMatch = result.match(/标题：(.*?)[\n\r]/)
+    const contentMatch = result.match(/内容：([\s\S]*)/)
 
     if (titleMatch && titleMatch[1]) {
-      title = titleMatch[1].trim();
-      Logger.info('成功提取标题（方法1）', title);
+      title = titleMatch[1].trim()
+      Logger.info('成功提取标题（方法1）', title)
     } else {
       // 方法2：使用第一行作为标题
-      const lines = result.split('\n');
+      const lines = result.split('\n')
       if (lines.length > 0 && lines[0].length < 50) {
-        title = lines[0].trim();
-        processedContent = lines.slice(1).join('\n').trim();
-        Logger.info('成功提取标题（方法2）', title);
+        title = lines[0].trim()
+        processedContent = lines.slice(1).join('\n').trim()
+        Logger.info('成功提取标题（方法2）', title)
       }
     }
 
     // 如果找到了内容匹配，使用匹配的内容
     if (contentMatch && contentMatch[1]) {
-      processedContent = contentMatch[1].trim();
+      processedContent = contentMatch[1].trim()
     }
 
     // 确保标题不为空
     if (!title || title.length === 0) {
-      title = '收藏内容';
+      title = '收藏内容'
     }
 
-    Logger.info('内容专业化处理完成', { title, titleLength: title.length });
+    Logger.info('内容专业化处理完成', { title, titleLength: title.length })
 
     return {
       title: title,
-      content: processedContent
-    };
+      content: processedContent,
+    }
   } catch (error) {
-    Logger.error('内容专业化处理失败', error);
+    Logger.error('内容专业化处理失败', error)
     // 出错时返回默认值，而不是抛出错误
     return {
       title: '收藏内容',
-      content: content
-    };
+      content: content,
+    }
   }
 }
 
@@ -346,27 +322,15 @@ async function professionalizeContent(content) {
  */
 function stopGeneration() {
   // 设置停止标志
-  isGenerationStopped = true;
-  Logger.info('已设置AI回复生成停止标志');
+  isGenerationStopped = true
+  Logger.info('已设置AI回复生成停止标志')
 }
 
-/**
- * 获取提示词
- * @returns {Promise<Object>} 提示词
- */
-function getPrompt() {
-  return wx.cloud.callFunction({
-    name: CLOUD_FUNCTIONS.GET_PROMPT,
-    success: (res) => res.result,
-    fail: (err) =>  Promise.reject(new Error(`云函数调用失败: ${err.errMsg}`))
-  })
-}
-
+// 导出函数
 export default {
   generateAIResponse,
   generateRecommendedQuestions,
   getDefaultRecommendedQuestions,
   professionalizeContent,
   stopGeneration,
-  getPrompt
-}; 
+}

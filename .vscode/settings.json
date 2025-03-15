@@ -1,3 +1,6 @@
 {
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "editor.formatOnSave": true,
+  "editor.fontLigatures": false,
+  "editor.fontVariations": false
 }

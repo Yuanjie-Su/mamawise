@@ -3,10 +3,10 @@
  * 负责处理聊天记录的存储和管理
  */
 
-import Logger from '../utils/logger';
-import appConfig from '../config/appConfig';
+import Logger from '../utils/logger'
+import appConfig from '../config/appConfig'
 
-const { STORAGE_KEYS, DEFAULT_AI_CONFIG } = appConfig;
+const { STORAGE_KEYS } = appConfig
 
 /**
  * 保存聊天记录
@@ -16,9 +16,9 @@ const { STORAGE_KEYS, DEFAULT_AI_CONFIG } = appConfig;
 async function saveChatHistory(messages) {
   try {
     // 本地缓存
-    wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, messages);
+    wx.setStorage(STORAGE_KEYS.CHAT_HISTORY, messages)
   } catch (error) {
-    Logger.error('保存聊天记录失败', error);
+    Logger.error('保存聊天记录失败', error)
   }
 }
 
@@ -27,39 +27,15 @@ async function saveChatHistory(messages) {
  * @returns {Promise<Array>} 聊天消息数组
  */
 function getChatHistory() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
-      const chatHistory = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || [];
-      resolve(chatHistory);
+      const chatHistory = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || []
+      resolve(chatHistory)
     } catch (error) {
-      Logger.error('获取聊天记录失败', error);
-      resolve([]);
+      Logger.error('获取聊天记录失败', error)
+      resolve([])
     }
-  });
-} 
-
-/**
- * 获取提示词
- * @returns {Promise<Object>} 提示词对象
- */
-function getPrompt() {
-  return new Promise((resolve) => {
-    try {
-      const prompt = wx.getStorageSync(STORAGE_KEYS.PROMPT);
-      resolve(prompt || {
-        'default_prompt': DEFAULT_AI_CONFIG.PROMPT,
-        'health_prompt': ''
-      });
-    } catch (error) {
-      Logger.error('获取提示词失败', error);
-      resolve(
-        {
-          'default_prompt': DEFAULT_AI_CONFIG.PROMPT,
-          'health_prompt': ''
-        }
-      );
-    }
-  });
+  })
 }
 
 /**
@@ -67,15 +43,15 @@ function getPrompt() {
  * @returns {Promise<void>}
  */
 function clearChatHistory() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
-      wx.removeStorageSync(STORAGE_KEYS.CHAT_HISTORY);
-      resolve();
+      wx.removeStorageSync(STORAGE_KEYS.CHAT_HISTORY)
+      resolve()
     } catch (error) {
-      Logger.error('清空聊天记录失败', error);
-      resolve();
+      Logger.error('清空聊天记录失败', error)
+      resolve()
     }
-  });
+  })
 }
 
 /**
@@ -89,12 +65,12 @@ function addUserMessage(content, messages) {
     id: messages.length + 1,
     type: 'user',
     content: content,
-  };
-  
-  const updatedMessages = [...messages, newMessage];
-  saveChatHistory(updatedMessages);
-  
-  return updatedMessages;
+  }
+
+  const updatedMessages = [...messages, newMessage]
+  saveChatHistory(updatedMessages)
+
+  return updatedMessages
 }
 
 /**
@@ -108,12 +84,12 @@ function addSystemMessage(content, messages) {
     id: messages.length + 1,
     type: 'system',
     content: content,
-  };
-  
-  const updatedMessages = [...messages, newMessage];
-  saveChatHistory(updatedMessages);
-  
-  return updatedMessages;
+  }
+
+  const updatedMessages = [...messages, newMessage]
+  saveChatHistory(updatedMessages)
+
+  return updatedMessages
 }
 
 /**
@@ -124,22 +100,21 @@ function addSystemMessage(content, messages) {
  */
 function updateLastMessage(content, messages) {
   if (messages.length === 0) {
-    return messages;
+    return messages
   }
-  
-  const updatedMessages = [...messages];
-  updatedMessages[updatedMessages.length - 1].content = content;
-  
-  saveChatHistory(updatedMessages);
-  return updatedMessages;
+
+  const updatedMessages = [...messages]
+  updatedMessages[updatedMessages.length - 1].content = content
+
+  saveChatHistory(updatedMessages)
+  return updatedMessages
 }
 
 export default {
   saveChatHistory,
   getChatHistory,
-  getPrompt,
   clearChatHistory,
   addUserMessage,
   addSystemMessage,
   updateLastMessage,
-}; 
+}

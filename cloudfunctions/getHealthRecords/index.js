@@ -13,57 +13,59 @@
       "type": "string",
       "default": "system-generated"
     },
-    "dueDate": {
-      "description": "预产期，格式YYYY-MM-DD",
-      "type": "string",
-      "default": ""
+    "pregnancyInfo": {
+      "description": "怀孕信息",
+      "type": "object"
     },
-    "pregnancyWeek": {
-      "description": "孕周数",
-      "type": "number",
-      "default": -1
+    "allergyInfo": {
+      "description": "过敏信息",
+      "type": "array"
     },
-    "height": {
-      "description": "身高，单位cm",
-      "type": "number",
-      "default": -1
+    "dietPreference": {
+      "description": "饮食偏好",
+      "type": "array"
     },
-    "prePregnancyWeight": {
-      "description": "孕前体重，单位kg",
-      "type": "number",
-      "default": -1
+    "otherInfo": {
+      "description": "其他信息",
+      "type": "string"
+    },
+    "bloodPressureRecords": {
+      "description": "血压记录",
+      "type": "array"
     },
     "weightRecords": {
       "description": "体重记录",
-      "type": "array",
-      "default": []
+      "type": "array"
     },
-    "bloodPressure": {
-      "description": "血压记录",
-      "type": "array",
-      "default": []
-    },
-    "bloodSugar": {
+    "bloodSugarRecords": {
       "description": "血糖记录",
-      "type": "array",
-      "default": []
+      "type": "array"
     },
-    "fetalMovement": {
-      "description": "胎动记录",
-      "type": "array",
-      "default": []
-    },
-    "heartRate": {
-      "description": "心率记录",
-      "type": "array",
-      "default": []
-    },
-    "temperature": {
+    "temperatureRecords": {
       "description": "体温记录",
-      "type": "array",
-      "default": []
+      "type": "array"
+    },
+    "heartRateRecords": {
+      "description": "心率记录",
+      "type": "array"
+    },
+    "fetalMovementRecords": {
+      "description": "胎动记录",
+      "type": "array"
+    },
+    "medications": {
+      "description": "用药记录",
+      "type": "array"
+    },
+    "checkupRecords": {
+      "description": "检查记录",
+      "type": "array"
+    },
+    "checkupAnalysis": {
+      "description": "检查分析",
+      "type": "string"
     }
-  },
+  },  
   "required": ["_openid"],
   "indexes": [
     {
@@ -79,27 +81,61 @@
 }
 */
 
-// 获取用户健康记录表中指定属性，可能指定多种属性，以数组形式返回
-// 例如：event.properties = ['weightRecords', 'bloodPressure']
-// 返回：[{weightRecords: [...weightRecords]}, {bloodPressure: [...bloodPressure]}]
+// 获取用户健康记录
 
 const cloud = require('wx-server-sdk')
 
 cloud.init({
-  env: cloud.DYNAMIC_CURRENT_ENV
+  env: cloud.DYNAMIC_CURRENT_ENV,
 })
 
 const db = cloud.database()
 
+const healthRecordsCollection = db.collection('health_records')
+
 exports.main = async (event, context) => {
-  const wxContext = cloud.getWXContext()
-  const _openid = wxContext.OPENID
+  try {
+    const wxContext = cloud.getWXContext()
+    const openid = wxContext.OPENID
 
-  const { properties } = event
+    const { defaultHealthRecords } = event
 
-  const result = await db.collection('health_records').where({
-    _openid: _openid
-  }).get()
+    const doc = await healthRecordsCollection
+      .where({
+        _openid: openid,
+      })
+      .get()
 
-  return result.data[0][properties]
+    // 不存在则创建
+    if (doc.data.length === 0) {
+      await healthRecordsCollection.add({
+        data: {
+          _openid: openid,
+          ...defaultHealthRecords,
+        },
+        setUnionId: false,
+      })
+      return {
+        success: true,
+        data: defaultHealthRecords,
+      }
+    } else {
+      return {
+        success: true,
+        // 返回去除_id和_openid的data
+        data: {
+          ...doc.data[0],
+          _id: undefined,
+          _openid: undefined,
+        },
+      }
+    }
+  } catch (e) {
+    console.error('获取健康记录失败:', e)
+    return {
+      success: false,
+      data: defaultHealthRecords,
+      error: e.message,
+    }
+  }
 }

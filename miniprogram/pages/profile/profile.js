@@ -3,7 +3,7 @@ import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
 import userService from '../../services/userService'
-const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig;
+const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
 
 Page({
   data: {
@@ -14,20 +14,20 @@ Page({
         id: 1,
         name: '我的收藏',
         icon: '/images/icons/favorited.png',
-        url: '/pages/favorites/favorites'
+        url: '/pages/favorites/favorites',
       },
       {
         id: 2,
         name: '使用帮助',
         icon: '/images/icons/help.png',
-        url: ''
+        url: '',
       },
       {
         id: 4,
         name: '设置',
         icon: '/images/icons/settings.png',
-        url: '/pages/settings/settings'
-      }
+        url: '/pages/settings/settings',
+      },
     ],
 
     // 日历数据
@@ -35,7 +35,7 @@ Page({
       year: '',
       month: '',
       day: '',
-      weekday: ''
+      weekday: '',
     },
 
     // 节气信息
@@ -45,15 +45,36 @@ Page({
   // =============================================
   // 页面生命周期函数
   // =============================================
-  
+
   onLoad() {
     Logger.info('个人页面加载')
 
     // 加载用户信息
     this.setData({
       userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) || {},
-      isLoggedIn: app.globalData.isLoggedIn
+      isLoggedIn: app.globalData.isLoggedIn,
     })
+  },
+
+  onShow() {
+    Logger.info('个人页面显示')
+
+    // 检查登录是否发生变化
+    let currentIsLoggedIn = app.globalData.isLoggedIn
+    if (currentIsLoggedIn !== this.data.isLoggedIn) {
+      this.setData({
+        isLoggedIn: currentIsLoggedIn,
+      })
+      if (currentIsLoggedIn) {
+        this.setData({
+          userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) || {},
+        })
+      } else {
+        this.setData({
+          userInfo: {},
+        })
+      }
+    }
 
     // 初始化日历数据
     this.initCalendarData()
@@ -62,50 +83,37 @@ Page({
     this.updateSolarTerm()
   },
 
-  onShow() {
-    Logger.info('个人页面显示');
-
-    // 检查登录是否发生变化
-    let currentIsLoggedIn = app.globalData.isLoggedIn
-    if (currentIsLoggedIn !== this.data.isLoggedIn) {
-      this.setData({
-        isLoggedIn: currentIsLoggedIn
-      })
-      if (currentIsLoggedIn) {
-        this.setData({
-          userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) ||  {}
-        })
-      } else {
-        this.setData({
-          userInfo: {}
-        })
-      }
-    }
-
-    // 初始化日历数据
-    this.initCalendarData();
-
-    // 获取节气信息
-    this.updateSolarTerm();
-  },
-
   // =============================================
   // 用户信息相关函数
   // =============================================
-  
+
   // 用户登录
   async login() {
     try {
-      const userInfo = await userService.login()
+      // 登录,获取用户信息
+      const { userInfo, prompt } = await userService.login()
       this.setData({
         userInfo,
-        isLoggedIn: true
+        isLoggedIn: true,
       })
 
-      // 更新本地状态
-      wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo)
-      wx.setStorageSync(STORAGE_KEYS.IS_LOGGED_IN, true)
+      // 更新全局状态
       app.globalData.isLoggedIn = true
+      app.globalData.prompt_healthRecords = prompt
+
+      // 更新本地状态
+      wx.setStorage({
+        key: STORAGE_KEYS.USER_INFO,
+        data: userInfo,
+      })
+      wx.setStorage({
+        key: STORAGE_KEYS.IS_LOGGED_IN,
+        data: true,
+      })
+      wx.setStorage({
+        key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
+        data: prompt,
+      })
     } catch (err) {
       Logger.error('登录失败', err)
     }
@@ -114,244 +122,249 @@ Page({
   // 编辑用户信息
   editUserInfo() {
     if (!this.data.isLoggedIn) {
-      return;
+      return
     }
-    
+
     wx.showActionSheet({
       itemList: ['修改头像', '修改昵称'],
-      success: (res) => {
+      success: res => {
         if (res.tapIndex === 0) {
           // 修改头像
-          this.changeAvatar();
+          this.changeAvatar()
         } else if (res.tapIndex === 1) {
           // 修改昵称
-          this.changeNickname();
+          this.changeNickname()
         }
-      }
-    });
+      },
+    })
   },
-  
+
   // 修改头像
   changeAvatar() {
     wx.chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
-      success: (res) => {
-        const tempFilePath = res.tempFilePaths[0];
-        
+      success: res => {
+        const tempFilePath = res.tempFilePaths[0]
+
         // 显示加载提示
         wx.showLoading({
           title: '上传中...',
-        });
-        
+        })
+
         // 上传图片到云存储
-        const cloudPath = `mamawise/miniprogram/images/user_avatar/${app.globalData.openid || 'user'}_${new Date().getTime()}.png`;
+        const cloudPath = `mamawise/miniprogram/images/user_avatar/${
+          app.globalData.openid || 'user'
+        }_${new Date().getTime()}.png`
         wx.cloud.uploadFile({
           cloudPath: cloudPath,
           filePath: tempFilePath,
-          success: (res) => {
-            const fileID = res.fileID;
-            
+          success: res => {
+            const fileID = res.fileID
+
             // 调用云函数更新用户头像
-            wx.cloud.callFunction({
-              name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-              data: {
-                property: 'avatarUrl',
-                value: fileID
-              }
-            }).then(res => {
-              wx.hideLoading();
-              
-              if (!res || !res.result) {
+            wx.cloud
+              .callFunction({
+                name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
+                data: {
+                  property: 'avatarUrl',
+                  value: fileID,
+                },
+              })
+              .then(res => {
+                wx.hideLoading()
+
+                if (!res || !res.result) {
+                  wx.showToast({
+                    title: '更新失败，请重试',
+                    icon: 'none',
+                  })
+                  return
+                }
+
+                const { success, error } = res.result
+
+                if (success) {
+                  // 更新本地状态
+                  const updatedUserInfo = {
+                    ...this.data.userInfo,
+                    avatarUrl: fileID,
+                  }
+
+                  this.setData({
+                    userInfo: updatedUserInfo,
+                  })
+
+                  // 更新本地存储
+                  wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
+
+                  wx.showToast({
+                    title: '头像已更新',
+                    icon: 'success',
+                  })
+
+                  Logger.info('用户头像已更新', { fileID })
+                } else {
+                  Logger.error('更新头像失败', error)
+                  wx.showToast({
+                    title: '更新失败，请重试',
+                    icon: 'none',
+                  })
+                }
+              })
+              .catch(err => {
+                wx.hideLoading()
+                Logger.error('更新头像失败', err)
                 wx.showToast({
                   title: '更新失败，请重试',
-                  icon: 'none'
-                });
-                return;
-              }
-              
-              const { success, error } = res.result;
-              
-              if (success) {
-                // 更新本地状态
-                const updatedUserInfo = { 
-                  ...this.data.userInfo, 
-                  avatarUrl: fileID 
-                }; 
-                
-                this.setData({
-                  userInfo: updatedUserInfo
-                });
-                
-                // 更新本地存储
-                wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo);
-                
-                wx.showToast({
-                  title: '头像已更新',
-                  icon: 'success'
-                });
-                
-                Logger.info('用户头像已更新', { fileID });
-              } else {
-                Logger.error('更新头像失败', error);
-                wx.showToast({
-                  title: '更新失败，请重试',
-                  icon: 'none'
-                });
-              }
-            }).catch(err => {
-              wx.hideLoading();
-              Logger.error('更新头像失败', err);
-              wx.showToast({
-                title: '更新失败，请重试',
-                icon: 'none'
-              });
-            });
+                  icon: 'none',
+                })
+              })
           },
-          fail: (err) => {
-            wx.hideLoading();
-            Logger.error('上传头像失败', err);
+          fail: err => {
+            wx.hideLoading()
+            Logger.error('上传头像失败', err)
             wx.showToast({
               title: '上传失败，请重试',
-              icon: 'none'
-            });
-          }
-        });
-      }
-    });
+              icon: 'none',
+            })
+          },
+        })
+      },
+    })
   },
-  
+
   // 预览头像
   previewAvatar() {
     // 只有登录用户才能预览头像
     if (!this.data.isLoggedIn || !this.data.userInfo.avatarUrl) {
-      return;
+      return
     }
-    
+
     // 使用微信预览图片API
     wx.previewImage({
       current: this.data.userInfo.avatarUrl, // 当前显示图片的链接
-      urls: [this.data.userInfo.avatarUrl] // 需要预览的图片链接列表
-    });
-    
-    Logger.info('用户预览头像');
+      urls: [this.data.userInfo.avatarUrl], // 需要预览的图片链接列表
+    })
+
+    Logger.info('用户预览头像')
   },
-  
+
   // 修改昵称
   changeNickname() {
     wx.showModal({
       title: '修改昵称',
       editable: true,
       placeholderText: this.data.userInfo.nickName,
-      success: async (res) => {
+      success: async res => {
         if (res.confirm && res.content.trim()) {
-          const newNickname = res.content.trim();
-          
+          const newNickname = res.content.trim()
+
           try {
-            wx.showLoading({ title: '保存中...' });
-            
+            wx.showLoading({ title: '保存中...' })
+
             // 调用云函数更新用户信息
             const result = await wx.cloud.callFunction({
               name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
               data: {
                 property: 'nickName',
-                value: newNickname
-              }
-            });
-            
-            wx.hideLoading();
-            
+                value: newNickname,
+              },
+            })
+
+            wx.hideLoading()
+
             if (!result || !result.result) {
-              throw new Error('无效更新响应');
+              throw new Error('无效更新响应')
             }
-            
-            const { success, error } = result.result;
-            
+
+            const { success, error } = result.result
+
             if (success) {
               // 更新本地状态
-              const updatedUserInfo = { 
-                ...this.data.userInfo, 
-                nickName: newNickname 
-              };
-              
+              const updatedUserInfo = {
+                ...this.data.userInfo,
+                nickName: newNickname,
+              }
+
               this.setData({
-                userInfo: updatedUserInfo
-              });
-              
+                userInfo: updatedUserInfo,
+              })
+
               // 更新本地存储
-              wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo);
-              
+              wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
+
               wx.showToast({
                 title: '昵称已更新',
-                icon: 'success'
-              });
-              
-              Logger.info('用户昵称已更新', { newNickname });
+                icon: 'success',
+              })
+
+              Logger.info('用户昵称已更新', { newNickname })
             } else {
-              throw new Error(error || '更新失败');
+              throw new Error(error || '更新失败')
             }
           } catch (error) {
-            wx.hideLoading();
+            wx.hideLoading()
             wx.showToast({
               title: '更新失败，请重试',
-              icon: 'none'
-            });
-            Logger.error('更新用户昵称失败', error);
+              icon: 'none',
+            })
+            Logger.error('更新用户昵称失败', error)
           }
         }
-      }
-    });
+      },
+    })
   },
 
   // =============================================
   // 日历和节气相关函数
   // =============================================
-  
+
   // 初始化日历数据
   initCalendarData() {
-    Logger.debug('开始初始化日历数据');
+    Logger.debug('开始初始化日历数据')
 
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+    const date = new Date()
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
 
     // 获取星期几
-    const weekDay = '日一二三四五六'.charAt(date.getDay());
+    const weekDay = '日一二三四五六'.charAt(date.getDay())
 
     this.setData({
       calendarData: {
         year,
         month,
         day,
-        weekday: weekDay
-      }
-    });
+        weekday: weekDay,
+      },
+    })
 
-    Logger.debug('日历数据已初始化', this.data.calendarData);
+    Logger.debug('日历数据已初始化', this.data.calendarData)
   },
 
   // 更新节气信息
   updateSolarTerm() {
-    Logger.debug('开始更新节气信息');
+    Logger.debug('开始更新节气信息')
 
     // 获取节气信息
-    const solarTermInfo = solarTermService.getSolarTermInfo();
-    Logger.debug('获取到节气信息', solarTermInfo);
+    const solarTermInfo = solarTermService.getSolarTermInfo()
+    Logger.debug('获取到节气信息', solarTermInfo)
     this.setData({ solarTermInfo }, () => {
-      Logger.debug('节气信息已更新到界面');
-    });
+      Logger.debug('节气信息已更新到界面')
+    })
   },
 
   // =============================================
   // 导航相关函数
   // =============================================
-  
+
   // 显示关于我们
   showAbout() {
     wx.navigateTo({
-      url: '/pages/settings/settings?tab=about'
+      url: '/pages/settings/settings?tab=about',
     })
     Logger.debug('用户点击关于我们')
   },
@@ -359,7 +372,7 @@ Page({
   // 导航到设置页面
   navigateToSettings() {
     wx.navigateTo({
-      url: '/pages/settings/settings'
+      url: '/pages/settings/settings',
     })
   },
 
@@ -373,19 +386,35 @@ Page({
       return
     }
 
+    // 检查"我的收藏"是否需要登录
+    if (item.name === '我的收藏' && !this.data.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录，才能查看收藏内容',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: res => {
+          if (res.confirm) {
+            this.login()
+          }
+        },
+      })
+      return
+    }
+
     // 否则执行普通导航
     const url = item.url
     if (url) {
       wx.navigateTo({
-        url: url
+        url: url,
       })
       Logger.debug('用户导航到', { url })
     } else {
       wx.showToast({
         title: '功能开发中',
-        icon: 'none'
+        icon: 'none',
       })
       Logger.debug('用户尝试访问开发中的功能')
     }
   },
-}) 
+})

@@ -38,23 +38,23 @@
           </view>
           <view class="info-item">
             <text class="info-label">当前孕周</text>
-            <text class="info-value">{{basicInfo.pregnancyInfo.week}}周</text>
+            <text class="info-value">{{pregnancyInfo.week}}周</text>
           </view>
           <view class="info-item">
             <text class="info-label">预产期</text>
-            <text class="info-value">{{basicInfo.pregnancyInfo.dueDate}}</text>
+            <text class="info-value">{{pregnancyInfo.dueDate}}</text>
           </view>
-          <view class="info-item" wx:if="{{basicInfo.pregnancyInfo.lastCheckup}}">
+          <view class="info-item" wx:if="{{pregnancyInfo.lastCheckup}}">
             <text class="info-label">末次产检</text>
-            <text class="info-value">{{basicInfo.pregnancyInfo.lastCheckup}}</text>
+            <text class="info-value">{{pregnancyInfo.lastCheckup}}</text>
           </view>
-          <view class="baby-countdown" wx:if="{{basicInfo.pregnancyInfo.daysRemaining !== undefined && basicInfo.pregnancyInfo.daysRemaining !== ''}}">
+          <view class="baby-countdown" wx:if="{{pregnancyInfo.daysRemaining !== undefined && pregnancyInfo.daysRemaining !== ''}}">
             <image class="baby-icon" src="/images/icons/baby.png" mode="aspectFit"></image>
             <view class="countdown-text">
-              <text wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">距离宝宝出生还有</text>
+              <text wx:if="{{pregnancyInfo.daysRemaining > 0}}">距离宝宝出生还有</text>
               <text wx:else>宝宝即将出生</text>
-              <text class="countdown-days" wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">{{basicInfo.pregnancyInfo.daysRemaining}}</text>
-              <text class="countdown-unit" wx:if="{{basicInfo.pregnancyInfo.daysRemaining > 0}}">天</text>
+              <text class="countdown-days" wx:if="{{pregnancyInfo.daysRemaining > 0}}">{{pregnancyInfo.daysRemaining}}</text>
+              <text class="countdown-unit" wx:if="{{pregnancyInfo.daysRemaining > 0}}">天</text>
             </view>
           </view>
         </view>
@@ -68,15 +68,15 @@
           </view>
           <view class="info-item">
             <text class="info-label">年龄</text>
-            <text class="info-value">{{basicInfo.otherInfo.age ? basicInfo.otherInfo.age + ' 岁' : '未设置'}}</text>
+            <text class="info-value">{{otherInfo.age ? otherInfo.age + ' 岁' : '未设置'}}</text>
           </view>
           <view class="info-item">
             <text class="info-label">身高</text>
-            <text class="info-value">{{basicInfo.otherInfo.height ? basicInfo.otherInfo.height + ' cm' : '未设置'}}</text>
+            <text class="info-value">{{otherInfo.height ? otherInfo.height + ' cm' : '未设置'}}</text>
           </view>
           <view class="info-item">
             <text class="info-label">体重</text>
-            <text class="info-value">{{basicInfo.otherInfo.weight ? basicInfo.otherInfo.weight + ' kg' : '未设置'}}</text>
+            <text class="info-value">{{otherInfo.weight ? otherInfo.weight + ' kg' : '未设置'}}</text>
           </view>
         </view>
         
@@ -87,8 +87,8 @@
               <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
             </view>
           </view>
-          <view class="allergy-list" wx:if="{{basicInfo.allergyInfo && basicInfo.allergyInfo.length > 0}}">
-            <view class="allergy-item" wx:for="{{basicInfo.allergyInfo}}" wx:key="index">
+          <view class="allergy-list" wx:if="{{allergyInfo && allergyInfo.length > 0}}">
+            <view class="allergy-item" wx:for="{{allergyInfo}}" wx:key="index">
               {{item}}
               <view class="allergy-delete-btn" catchtap="deleteAllergy" data-index="{{index}}">
                 <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
@@ -107,8 +107,8 @@
               <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
             </view>
           </view>
-          <view class="allergy-list" wx:if="{{basicInfo.dietPreference && basicInfo.dietPreference.length > 0}}">
-            <view class="allergy-item" wx:for="{{basicInfo.dietPreference}}" wx:key="index">
+          <view class="allergy-list" wx:if="{{dietPreference && dietPreference.length > 0}}">
+            <view class="allergy-item" wx:for="{{dietPreference}}" wx:key="index">
               {{item}}
               <view class="allergy-delete-btn" catchtap="deleteDietPreference" data-index="{{index}}">
                 <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
@@ -132,12 +132,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.bloodPressure}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{bloodPressureRecords}}" wx:key="date" bindtap="viewDetail" data-type="血压" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} mmHg</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.bloodPressure || vitalsRecords.bloodPressure.length === 0}}">
+            <view class="empty-tip" wx:if="{{!bloodPressureRecords || bloodPressureRecords.length === 0}}">
               暂无血压记录
             </view>
           </view>
@@ -152,12 +152,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.weight}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{weightRecords}}" wx:key="date" bindtap="viewDetail" data-type="体重" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} kg</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.weight || vitalsRecords.weight.length === 0}}">
+            <view class="empty-tip" wx:if="{{!weightRecords || weightRecords.length === 0}}">
               暂无体重记录
             </view>
           </view>
@@ -172,12 +172,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.bloodSugar}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{bloodSugarRecords}}" wx:key="date" bindtap="viewDetail" data-type="血糖" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} mmol/L</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.bloodSugar || vitalsRecords.bloodSugar.length === 0}}">
+            <view class="empty-tip" wx:if="{{!bloodSugarRecords || bloodSugarRecords.length === 0}}">
               暂无血糖记录
             </view>
           </view>
@@ -192,12 +192,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.temperature}}" wx:key="date" bindtap="viewDetail" data-type="体温" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{temperatureRecords}}" wx:key="date" bindtap="viewDetail" data-type="体温" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} °C</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.temperature || vitalsRecords.temperature.length === 0}}">
+            <view class="empty-tip" wx:if="{{!temperatureRecords || temperatureRecords.length === 0}}">
               暂无体温记录
             </view>
           </view>
@@ -212,12 +212,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.heartRate}}" wx:key="date" bindtap="viewDetail" data-type="心率" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{heartRateRecords}}" wx:key="date" bindtap="viewDetail" data-type="心率" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} 次/分</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.heartRate || vitalsRecords.heartRate.length === 0}}">
+            <view class="empty-tip" wx:if="{{!heartRateRecords || heartRateRecords.length === 0}}">
               暂无心率记录
             </view>
           </view>
@@ -232,12 +232,12 @@
             </view>
           </view>
           <view class="vitals-list">
-            <view class="vitals-item" wx:for="{{vitalsRecords.fetalMovement}}" wx:key="date" bindtap="viewDetail" data-type="胎动" data-index="{{index}}">
+            <view class="vitals-item" wx:for="{{fetalMovementRecords}}" wx:key="date" bindtap="viewDetail" data-type="胎动" data-index="{{index}}">
               <view class="vitals-date">{{item.date}} {{item.time}}</view>
               <view class="vitals-value">{{item.value}} 次/小时</view>
               <view class="arrow">></view>
             </view>
-            <view class="empty-tip" wx:if="{{!vitalsRecords.fetalMovement || vitalsRecords.fetalMovement.length === 0}}">
+            <view class="empty-tip" wx:if="{{!fetalMovementRecords || fetalMovementRecords.length === 0}}">
               暂无胎动记录
             </view>
           </view>
@@ -293,9 +293,9 @@
         </view>
         
         <!-- 历史产检记录分析结果 -->
-        <view class="info-card" wx:if="{{healthRecords.checkupAnalysis}}">
+        <view class="info-card" wx:if="{{checkupAnalysis}}">
           <view class="card-title">产检记录分析</view>
-          <view class="analysis-content">{{healthRecords.checkupAnalysis}}</view>
+          <view class="analysis-content">{{checkupAnalysis}}</view>
         </view>
         
         <view class="checkup-list">
@@ -414,7 +414,7 @@
     <view class="form-overlay" bindtap="hideVitalsForm"></view>
     <view class="form-container">
       <view class="form-header">
-        <text class="form-title">{{editingVitals ? '编辑体征记录' : '添加体征记录'}}</text>
+        <text class="form-title">{{editingVitals ? '编辑' + currentVitalsTypeName + '记录' : '添加' + currentVitalsTypeName + '记录'}}</text>
         <view class="close-btn" bindtap="hideVitalsForm">×</view>
       </view>
       <view class="form-content">
