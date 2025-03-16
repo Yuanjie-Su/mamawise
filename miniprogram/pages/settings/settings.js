@@ -60,7 +60,9 @@ Page({
           wx.removeStorageSync(STORAGE_KEYS.USER_INFO)
           wx.removeStorageSync(STORAGE_KEYS.IS_LOGGED_IN)
           wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS)
-          wx.removeStorageSync(STORAGE_KEYS.HAS_HEALTH_RECORDS)
+          wx.removeStorageSync(STORAGE_KEYS.CHAT_HISTORY)
+          wx.removeStorageSync(STORAGE_KEYS.PROMPT_HEALTH_RECORDS)
+          wx.removeStorageSync(STORAGE_KEYS.UNSAVED_COUNTER)
 
           Logger.info('用户登出成功')
         }

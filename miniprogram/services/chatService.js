@@ -6,27 +6,63 @@
 import Logger from '../utils/logger'
 import appConfig from '../config/appConfig'
 
-const { STORAGE_KEYS } = appConfig
+const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
 
 /**
  * 保存聊天记录
- * @param {Array} messages - 聊天消息数组
+ * @param {Array} messagesToSave - 需要保存的聊天消息数组
  * @returns {Promise<void>}
  */
-async function saveChatHistory(messages) {
+async function saveChatHistoryToCloud(messagesToSave) {
   try {
-    // 本地缓存
-    wx.setStorage(STORAGE_KEYS.CHAT_HISTORY, messages)
-  } catch (error) {
-    Logger.error('保存聊天记录失败', error)
+    const res = await wx.cloud.callFunction({
+      name: CLOUD_FUNCTIONS.ADD_CHAT_HISTORY,
+      data: { messagesToSave: messagesToSave },
+    })
+    if (!res || !res.result || !res.result.success) {
+      return {
+        success: false,
+        error: res.error || 'cloudfunctions/addChatHistory: 云数据库添加聊天记录失败',
+      }
+    }
+    return {
+      success: true,
+    }
+  } catch (cloudError) {
+    return {
+      success: false,
+      error: cloudError || 'chatService.saveChatHistory: 云数据库添加聊天记录失败',
+    }
   }
 }
 
 /**
- * 获取聊天记录
+ * 从云数据库获取聊天记录
  * @returns {Promise<Array>} 聊天消息数组
  */
-function getChatHistory() {
+async function getChatHistoryFromCloud() {
+  // 从云数据库获取
+  try {
+    const res = await wx.cloud.callFunction({
+      name: CLOUD_FUNCTIONS.GET_CHAT_HISTORY,
+    })
+    if (res && res.result && res.result.messages) {
+      return res.result.messages
+    } else {
+      Logger.error('获取聊天记录失败', res.error)
+      return []
+    }
+  } catch (error) {
+    Logger.error('获取聊天记录失败', error)
+    return []
+  }
+}
+
+/**
+ * 从本地缓存获取聊天记录
+ * @returns {Promise<Array>} 聊天消息数组
+ */
+async function getChatHistoryFromCache() {
   return new Promise(resolve => {
     try {
       const chatHistory = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || []
@@ -68,7 +104,6 @@ function addUserMessage(content, messages) {
   }
 
   const updatedMessages = [...messages, newMessage]
-  saveChatHistory(updatedMessages)
 
   return updatedMessages
 }
@@ -87,7 +122,6 @@ function addSystemMessage(content, messages) {
   }
 
   const updatedMessages = [...messages, newMessage]
-  saveChatHistory(updatedMessages)
 
   return updatedMessages
 }
@@ -106,13 +140,13 @@ function updateLastMessage(content, messages) {
   const updatedMessages = [...messages]
   updatedMessages[updatedMessages.length - 1].content = content
 
-  saveChatHistory(updatedMessages)
   return updatedMessages
 }
 
 export default {
-  saveChatHistory,
-  getChatHistory,
+  saveChatHistoryToCloud,
+  getChatHistoryFromCloud,
+  getChatHistoryFromCache,
   clearChatHistory,
   addUserMessage,
   addSystemMessage,

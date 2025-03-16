@@ -2,10 +2,12 @@
 const app = getApp()
 import Logger from '../../utils/logger'
 import healthRecordService from '../../services/healthRecordService'
-import promptService from '../../services/promptService'
+import appConfig from '../../config/appConfig'
+
+const { DEFAULT_HEALTH_RECORDS } = appConfig
 
 // 定义需要提取的属性列表
-const fields = [
+const FIELDS = [
   'pregnancyInfo',
   'allergyInfo',
   'dietPreference',
@@ -20,22 +22,6 @@ const fields = [
   'checkupRecords',
   'checkupAnalysis',
 ]
-
-const DEFAULT_HEALTH_RECORDS = {
-  pregnancyInfo: {},
-  allergyInfo: [],
-  dietPreference: [],
-  otherInfo: '',
-  bloodPressureRecords: [],
-  weightRecords: [],
-  bloodSugarRecords: [],
-  temperatureRecords: [],
-  heartRateRecords: [],
-  fetalMovementRecords: [],
-  medications: [],
-  checkupRecords: [],
-  checkupAnalysis: '',
-}
 
 Page({
   data: {
@@ -1750,7 +1736,7 @@ Page({
       // 保存到本地存储
       try {
         // 使用解构赋值提取属性
-        const healthRecords = fields.reduce((acc, field) => {
+        const healthRecords = FIELDS.reduce((acc, field) => {
           acc[field] = this.data[field]
           return acc
         }, {})

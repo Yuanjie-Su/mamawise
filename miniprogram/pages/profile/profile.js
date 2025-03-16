@@ -3,7 +3,10 @@ import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
 import userService from '../../services/userService'
-const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
+import chatService from '../../services/chatService'
+import promptService from '../../services/promptService'
+import healthRecordService from '../../services/healthRecordService'
+const { STORAGE_KEYS, CLOUD_FUNCTIONS, DEFAULT_HEALTH_RECORDS } = appConfig
 
 Page({
   data: {
@@ -90,8 +93,17 @@ Page({
   // 用户登录
   async login() {
     try {
-      // 登录,获取用户信息
-      const { userInfo, prompt } = await userService.login()
+      const [userInfo, chatHistory, prompt, healthRecords] = await Promise.all([
+        // 登录,获取用户信息
+        userService.login(),
+        // 获取聊天记录
+        chatService.getChatHistoryFromCloud(),
+        // 获取提示词
+        promptService.getPrompt(),
+        // 获取健康记录
+        healthRecordService.getHealthRecords(DEFAULT_HEALTH_RECORDS),
+      ])
+
       this.setData({
         userInfo,
         isLoggedIn: true,
@@ -99,21 +111,29 @@ Page({
 
       // 更新全局状态
       app.globalData.isLoggedIn = true
-      app.globalData.prompt_healthRecords = prompt
 
-      // 更新本地状态
-      wx.setStorage({
-        key: STORAGE_KEYS.USER_INFO,
-        data: userInfo,
-      })
-      wx.setStorage({
-        key: STORAGE_KEYS.IS_LOGGED_IN,
-        data: true,
-      })
-      wx.setStorage({
-        key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
-        data: prompt,
-      })
+      await Promise.all([
+        wx.setStorage({
+          key: STORAGE_KEYS.USER_INFO,
+          data: userInfo,
+        }),
+        wx.setStorage({
+          key: STORAGE_KEYS.IS_LOGGED_IN,
+          data: true,
+        }),
+        wx.setStorage({
+          key: STORAGE_KEYS.CHAT_HISTORY,
+          data: chatHistory,
+        }),
+        wx.setStorage({
+          key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
+          data: prompt,
+        }),
+        wx.setStorage({
+          key: STORAGE_KEYS.HEALTH_RECORDS,
+          data: healthRecords,
+        }),
+      ])
     } catch (err) {
       Logger.error('登录失败', err)
     }

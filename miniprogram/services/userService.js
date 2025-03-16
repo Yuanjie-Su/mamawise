@@ -14,7 +14,7 @@ const app = getApp()
  * 用户登录
  * @returns {Promise<Object>} 登录结果
  */
-async function login(prompt) {
+async function login() {
   try {
     // 1. 检查权限（异步处理）
     const authSetting = await new Promise((resolve, reject) => {
@@ -53,16 +53,18 @@ async function login(prompt) {
     // 4. 调用云函数（添加错误处理）
     const cloudRes = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.LOGIN,
-      data: { userInfo, prompt },
+      data: { userInfo },
     })
 
+    console.log('cloudRes', cloudRes)
+
     if (cloudRes.result.success) {
-      return cloudRes.result
+      return cloudRes.result.userInfo
     } else {
-      throw new Error(cloudRes.result.error || '登录失败')
+      throw new Error('云函数登录失败:' + cloudRes.result.error || '登录失败')
     }
   } catch (error) {
-    Logger.error('登录失败:', error)
+    Logger.error('userService: 登录失败:', error)
     throw error
   }
 }
@@ -90,12 +92,12 @@ function updateUserInfo(property, value) {
         if (success) {
           resolve(res.result)
         } else {
-          console.log('更新失败', error)
+          Logger.error('userService: 更新失败:', error)
           reject(new Error(error || '更新失败'))
         }
       })
       .catch(err => {
-        console.log('userService 异常', err)
+        Logger.error('userService: 异常:', err)
         reject(err)
       })
   })

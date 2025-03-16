@@ -55,7 +55,7 @@ Page({
 
   async loadData() {
     const [chatHistory, defaultRecommendedQuestions] = await Promise.all([
-      chatService.getChatHistory(),
+      chatService.getChatHistoryFromCache(),
       aiService.getDefaultRecommendedQuestions(),
     ])
 
@@ -154,6 +154,9 @@ Page({
             const aiMessageId = this.data.loadingMessageId
             const initialAiMessage = messageModel.createSystemMessage(aiMessageId, formattedText)
 
+            // 标记为正在生成中
+            initialAiMessage.isGenerating = true
+
             this.setData({
               messages: [...this.data.messages, initialAiMessage],
             })
@@ -166,23 +169,31 @@ Page({
         }
       )
 
-      // 如果用户已经终止了回复生成，则直接返回
+      // 使用app的方法增加未保存消息计数
+      app.incrementUnsavedCounter(2) // 用户消息和AI回复各算一条
+
+      // 如果用户已经终止了回复生成
       if (this.data.isGeneratingStopped) {
-        // 保存终止时的聊天记录
-        chatService.saveChatHistory(this.data.messages)
         return
       }
 
-      // 先保存完整的聊天记录
-      chatService.saveChatHistory(this.data.messages)
+      // 更新最后一条消息，移除isGenerating标志
+      const updatedMessages = [...this.data.messages]
+      if (updatedMessages.length > 0) {
+        const lastMessage = updatedMessages[updatedMessages.length - 1]
+        if (lastMessage.isGenerating) {
+          delete lastMessage.isGenerating
+        }
+      }
 
       // 生成新的推荐问题，传递上下文信息
       const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
-      this.setData({ recommendedQuestions })
 
-      // 然后再设置isLoading为false并滚动到底部
+      // 更新UI状态
       this.setData(
         {
+          messages: updatedMessages,
+          recommendedQuestions: recommendedQuestions,
           isLoading: false,
           loadingMessageId: null,
         },
@@ -191,32 +202,20 @@ Page({
           this.scrollToBottom()
         }
       )
+
+      // 保存最近200条聊天记录到缓存
+      this.saveChatHistoryToCache(updatedMessages.slice(-200))
     } catch (error) {
       // 处理错误
       Logger.error('生成AI回复时出错:', error)
 
-      // 如果消息已经创建，更新错误消息
-      const errorMessage = '抱歉，生成回复时出现了错误，请稍后再试。'
-      const updatedMessages = [...this.data.messages]
-
-      if (updatedMessages.length > 0) {
-        updatedMessages[updatedMessages.length - 1].content = errorMessage
-      }
-
+      // 在最近的一条消息后面添加一条AI回复错误的消息
+      const errorContent = '抱歉，生成回复时出现了错误，请稍后再试。'
+      const updatedMessages = chatService.addSystemMessage(errorContent, this.data.messages)
       this.setData({
         messages: updatedMessages,
         isLoading: false,
         loadingMessageId: null,
-      })
-
-      // 保存包含错误消息的聊天记录
-      chatService.saveChatHistory(updatedMessages)
-
-      // 显示错误提示
-      wx.showToast({
-        title: '生成回复失败',
-        icon: 'none',
-        duration: 2000,
       })
     }
   },
@@ -227,7 +226,7 @@ Page({
     const [lastMessage] = messages.slice(-1)
 
     if (lastMessage) {
-      // 直接修改消息内容（immutable 更新）
+      // 直接修改消息内容
       const newMessage = {
         ...lastMessage,
         content: lastMessage.content + text,
@@ -239,10 +238,27 @@ Page({
     }
   },
 
-  // // 延时函数
-  // sleep(ms) {
-  //   return new Promise(resolve => setTimeout(resolve, ms))
-  // },
+  // 保存聊天记录到缓存
+  async saveChatHistoryToCache(updatedMessages) {
+    // 尝试获取锁，如果已锁定则等待
+    if (app.globalData._saveOperationLock) {
+      Logger.info('saveChatHistoryToCache 等待释放锁')
+      setTimeout(() => this.saveChatHistoryToCache(updatedMessages), 100)
+      return
+    }
+
+    // 上锁
+    app.globalData._saveOperationLock = true
+
+    try {
+      wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, updatedMessages)
+    } catch (error) {
+      Logger.error('保存聊天记录到缓存失败', error)
+    } finally {
+      // 解锁
+      app.globalData._saveOperationLock = false
+    }
+  },
 
   // 滚动到底部
   scrollToBottom() {
@@ -420,7 +436,7 @@ Page({
   },
 
   // 终止机器人回复生成
-  stopGenerating() {
+  async stopGenerating() {
     // 设置一个标志，表示用户已经终止了回复生成
     this.setData({
       isGeneratingStopped: true,
@@ -432,27 +448,14 @@ Page({
     // 记录日志
     Logger.info('用户终止了回复生成')
 
+    // 生成新的推荐问题
+    const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
+
     // 更新UI状态
     this.setData({
+      recommendedQuestions: recommendedQuestions,
       isLoading: false,
       loadingMessageId: null,
-    })
-
-    // 保存终止时的聊天记录
-    chatService.saveChatHistory(this.data.messages)
-
-    // 显示提示
-    wx.showToast({
-      title: '已终止回复生成',
-      icon: 'none',
-      duration: 1500,
-    })
-
-    // 生成新的推荐问题
-    aiService.generateRecommendedQuestions(this.data.messages).then(questions => {
-      this.setData({
-        recommendedQuestions: questions,
-      })
     })
   },
 

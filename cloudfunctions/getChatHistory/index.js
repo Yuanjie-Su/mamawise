@@ -13,12 +13,7 @@
       "type": "string",
       "default": "system-generated"
     },
-    "model_name": {
-      "description": "AI模型名称",
-      "type": "string",
-      "default": "DeepSeek-v3"
-    },
-    "lists": {
+    "messages": {
       "description": "messages列表,object数组",
       "type": "array",
       "default": []
@@ -38,12 +33,12 @@
 } 
 */
 // 获取聊天记录
-// 返回lists属性和model_name属性
+// 返回messages属性
 
 const cloud = require('wx-server-sdk')
 
 cloud.init({
-  env: cloud.DYNAMIC_CURRENT_ENV
+  env: cloud.DYNAMIC_CURRENT_ENV,
 })
 
 const db = cloud.database()
@@ -51,38 +46,43 @@ const db = cloud.database()
 const chatHistoryCollection = db.collection('chat_history')
 
 exports.main = async (event, context) => {
-  // 获取openid
-  const openid = cloud.getWXContext().OPENID
+  try {
+    // 获取openid
+    const openid = cloud.getWXContext().OPENID
 
-  // 获取数据库中_openid对应的记录
-  const doc = await chatHistoryCollection.where({
-    _openid: openid
-  }).get()
+    // 获取数据库中_openid对应的记录
+    const doc = await chatHistoryCollection
+      .where({
+        _openid: openid,
+      })
+      .get()
 
-  // 记录存在
-  if (doc.data.length > 0) {
+    // 记录存在
+    if (doc.data.length > 0) {
+      return {
+        success: true,
+        messages: doc.data[0].messages,
+      }
+    }
+
+    // 记录不存在，创建记录
+    await chatHistoryCollection.add({
+      data: {
+        _openid: openid,
+        messages: [],
+      },
+      setUnionId: false,
+    })
+
+    // 返回空列表
     return {
-      lists: doc.data[0].lists,
-      model_name: doc.data[0].model_name
+      success: true,
+      messages: [],
+    }
+  } catch (e) {
+    return {
+      success: false,
+      error: e.message || '云数据库获取聊天记录失败',
     }
   }
-
-  const {model_name} = event
-  
-  // 使用upsert保证原子性插入
-  await chatHistoryCollection.upsert(
-    { _openid: openid },
-    { 
-      lists: [],
-      model_name: model_name,
-    },
-    { update: true, setOnInsert: true }
-  );
-
-  // 返回
-  return {
-    lists: [],
-    model_name: model_name,
-  }
 }
-

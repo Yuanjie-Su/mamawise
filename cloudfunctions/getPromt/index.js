@@ -11,10 +11,10 @@
       "description": "用户的微信openid",
       "type": "string"
     },
-    "prompt": {
-      "description": "提示词",
-      "type": "object",
-      "default": {}
+    "healthRecordsPrompt": {
+      "description": "健康记录提示词",
+      "type": "string",
+      "default": ""
     }
   },
   "required": ["_openid"],
@@ -34,7 +34,7 @@
 
 // 获取提示词
 // 返回：提示词对象，示例：{
-//   "recommended_questions": "基于以下聊天历史，生成3个用户可能想继续问的问题。
+//   "healthRecordsPrompt": "基于以下聊天历史，生成3个用户可能想继续问的问题。
 // 这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。
 // 只返回问题，每行一个，不要有编号或其他格式。\n\n
 // 聊天历史：\n用户：你好，我怀孕了，最近感觉很累，有什么需要注意的吗？\n
@@ -51,20 +51,39 @@ const promptsCollection = db.collection('prompts')
 
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
-  const _openid = wxContext.OPENID
+  const openid = wxContext.OPENID
 
   try {
-    const result = await promptsCollection.where({
-      _openid: _openid,
-    }).get()
-    return { 
+    const result = await promptsCollection
+      .where({
+        _openid: openid,
+      })
+      .get()
+
+    // 记录不存在，创建记录
+    if (result.data.length > 0) {
+      return {
+        success: true,
+        healthRecordsPrompt: result.data[0].healthRecordsPrompt,
+      }
+    }
+
+    await promptsCollection.add({
+      data: {
+        _openid: openid,
+        healthRecordsPrompt: '',
+      },
+      setUnionId: false,
+    })
+
+    return {
       success: true,
-      prompt: result.data[0]?.prompt ?? {}
+      healthRecordsPrompt: '',
     }
   } catch (error) {
-    return { 
+    return {
       success: false,
-      error: error.message
+      error: error.message,
     }
   }
 }

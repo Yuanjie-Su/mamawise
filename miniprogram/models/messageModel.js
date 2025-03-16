@@ -13,8 +13,9 @@ function createUserMessage(id, content) {
   return {
     id,
     type: 'user',
-    content
-  };
+    content,
+    timestamp: Date.now(),
+  }
 }
 
 /**
@@ -28,8 +29,9 @@ function createSystemMessage(id, content) {
     id,
     type: 'system',
     content,
-    isFavorite: false
-  };
+    isFavorite: false,
+    timestamp: Date.now(),
+  }
 }
 
 /**
@@ -41,12 +43,12 @@ function createSystemMessage(id, content) {
 function updateMessageContent(message, content) {
   return {
     ...message,
-    content
-  };
+    content,
+  }
 }
 
 export default {
   createUserMessage,
   createSystemMessage,
-  updateMessageContent
-}; 
+  updateMessageContent,
+}

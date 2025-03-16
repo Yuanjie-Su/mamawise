@@ -1,13 +1,8 @@
 // 登录，输入示例
 // {
-//   "code": "00111111111111111111111111111111"
 //   "userInfo": {
 //     "nickName": "张三",
 //     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
-//   }
-//   "prompt": {
-//     "prefix": "你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。"
-//     "healthRecord": ""
 //   }
 // }
 // 数据库中没有_openid对应的记录，返回传入的userInfo；否则返回数据库中的userInfo
@@ -17,10 +12,6 @@
 //   "userInfo": {
 //     "nickName": "张三",
 //     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
-//   }
-//   "prompt": {
-//     "prefix": "你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。"
-//     "healthRecord": ""
 //   }
 //   "error": null
 // }
@@ -58,7 +49,6 @@ exports.main = async (event, context) => {
 /* 用户数据操作核心逻辑 */
 async function handleUserOperation(openid, userInfo) {
   const userCollection = db.collection('users')
-  const promptCollection = db.collection('prompts')
   // 查询现有用户
   const userDoc = await userCollection
     .where({
@@ -68,37 +58,10 @@ async function handleUserOperation(openid, userInfo) {
 
   // 用户存在时返回数据
   if (userDoc.data.length > 0) {
-    const promptDoc = await promptCollection
-      .where({
-        _openid: openid,
-      })
-      .get()
-
-    if (promptDoc.data.length > 0) {
-      return buildSuccessResponse(
-        {
-          nickName: userDoc.data[0].nickName,
-          avatarUrl: userDoc.data[0].avatarUrl,
-        },
-        promptDoc.data[0].prompt
-      )
-    } else {
-      // 建立用户的prompt
-      await promptCollection.add({
-        data: {
-          _openid: openid,
-          prompt: '',
-        },
-        setUnionId: false,
-      })
-      return buildSuccessResponse(
-        {
-          nickName: userDoc.data[0].nickName,
-          avatarUrl: userDoc.data[0].avatarUrl,
-        },
-        ''
-      )
-    }
+    return buildSuccessResponse({
+      nickName: userDoc.data[0].nickName,
+      avatarUrl: userDoc.data[0].avatarUrl,
+    })
   }
 
   // 用户不存在时创建
@@ -107,15 +70,6 @@ async function handleUserOperation(openid, userInfo) {
       _openid: openid,
       nickName: userInfo.nickName,
       avatarUrl: userInfo.avatarUrl,
-    },
-    setUnionId: false,
-  })
-
-  // 建立用户的prompt
-  await promptCollection.add({
-    data: {
-      _openid: openid,
-      prompt: '',
     },
     setUnionId: false,
   })
@@ -129,7 +83,6 @@ function buildSuccessResponse(userData) {
   return {
     success: true,
     userInfo: userData,
-    prompt: '',
     error: null,
   }
 }

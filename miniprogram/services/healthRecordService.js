@@ -7,15 +7,15 @@ import Logger from '../utils/logger'
 // 获取健康记录
 async function getHealthRecords(data) {
   try {
-    const result = await wx.cloud.callFunction({
+    const res = await wx.cloud.callFunction({
       name: 'getHealthRecords',
       data: { defaultHealthRecords: data },
     })
 
-    Logger.debug('云端健康记录', result)
+    Logger.debug('云端健康记录', res)
 
-    if (result && result.data) {
-      return result.data
+    if (res && res.data) {
+      return res.data
     } else {
       return data
     }

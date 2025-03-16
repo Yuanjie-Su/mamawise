@@ -47,5 +47,6 @@
     "weui": true
   },
   "subPackages": [],
-  "usingComponents": {}
+  "usingComponents": {},
+  "lazyCodeLoading": "requiredComponents"
 } 

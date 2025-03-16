@@ -11,10 +11,10 @@ const STORAGE_KEYS = {
   IS_LOGGED_IN: 'isLoggedIn', // 登录状态
   CURRENT_MODEL: 'currentModel', // 当前模型
   CHAT_HISTORY: 'chatHistory', // 聊天历史
-  PROMPT: 'prompt', // 提示词
   PROMPT_HEALTH_RECORDS: 'prompt_healthRecords', // 健康记录提示词
   HEALTH_RECORDS: 'healthRecords', // 健康记录
   FAVORITES: 'favorites', // 收藏
+  UNSAVED_COUNTER: 'unsavedCounter', // 未保存消息计数器
 }
 
 // API配置
@@ -22,6 +22,21 @@ const API_CONFIG = {
   // 其他API配置
 }
 
+const DEFAULT_HEALTH_RECORDS = {
+  pregnancyInfo: {},
+  allergyInfo: [],
+  dietPreference: [],
+  otherInfo: '',
+  bloodPressureRecords: [],
+  weightRecords: [],
+  bloodSugarRecords: [],
+  temperatureRecords: [],
+  heartRateRecords: [],
+  fetalMovementRecords: [],
+  medications: [],
+  checkupRecords: [],
+  checkupAnalysis: '',
+}
 // 云函数名称
 const CLOUD_FUNCTIONS = {
   LOGIN: 'login',
@@ -34,7 +49,7 @@ const CLOUD_FUNCTIONS = {
   DELETE_USER_INFO: 'deleteUserInfo',
   UPDATE_USER_INFO: 'updateUserInfo',
   GET_HEALTH_RECORDS: 'getHealthRecords',
-  GET_PROMPT: 'getPrompt',
+  GET_PROMPT: 'getPromt',
   GET_CHAT_HISTORY: 'getChatHistory',
   UPDATE_CHAT_HISTORY: 'updateChatHistory',
   UPDATE_HEALTH_RECORDS: 'updateHealthRecords',
@@ -98,4 +113,5 @@ export default {
   DEFAULT_AI_CONFIG,
   MODEL_CONFIG,
   MODEL_OPTIONS,
+  DEFAULT_HEALTH_RECORDS,
 }
