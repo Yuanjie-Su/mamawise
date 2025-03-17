@@ -3,7 +3,6 @@ import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import aiService from '../../services/aiService'
 import chatService from '../../services/chatService'
-import messageModel from '../../models/messageModel'
 import markdownUtil from '../../utils/markdownUtil'
 
 const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS, DEFAULT_AI_CONFIG } = appConfig
@@ -85,54 +84,51 @@ Page({
   },
 
   // 发送消息
-  sendMessage() {
+  async sendMessage() {
     // 如果正在加载中，不允许发送新消息
     if (this.data.isLoading) {
       return
     }
 
-    const inputValue = this.data.inputValue.trim()
+    const userQuery = this.data.inputValue.trim()
 
-    if (!inputValue) {
+    if (!userQuery) {
       return
     }
 
     // 添加用户消息
-    const updatedMessages = chatService.addUserMessage(inputValue, this.data.messages)
+    const updatedMessages = chatService.addUserMessage(userQuery, this.data.messages)
 
-    this.setData(
-      {
-        messages: updatedMessages,
-        inputValue: '',
-      },
-      () => {
-        // 滚动到底部
-        this.scrollToBottom()
+    this.setData({
+      messages: updatedMessages,
+      inputValue: '',
+    })
 
-        // 生成AI回复
-        this.generateAIResponse(inputValue)
-      }
-    )
+    // 并发生成AI回复和推荐问题
+    const [, recommendedQuestions] = await Promise.all([
+      this.generateAIResponse(userQuery),
+      aiService.generateRecommendedQuestions(userQuery),
+    ])
+
+    this.setData({
+      isLoading: false,
+      loadingMessageId: null,
+      recommendedQuestions: recommendedQuestions,
+    })
   },
 
   // 生成AI回复
   async generateAIResponse(userQuery) {
     try {
-      // 重置终止标志
-      this.setData(
-        {
-          isGeneratingStopped: false,
-          isLoading: true,
-          loadingMessageId: this.data.messages.length + 1,
-        },
-        () => {
-          // 滚动到底部
-          this.scrollToBottom()
-        }
-      )
+      // 新增ai回复消息
+      const newMessage = chatService.createSystemMessage('', this.data.messages.length + 1)
 
-      // 创建一个变量来跟踪是否已经创建了消息
-      let messageCreated = false
+      this.setData({
+        isGeneratingStopped: false,
+        isLoading: true,
+        messages: [...this.data.messages, newMessage],
+        loadingMessageId: newMessage.id,
+      })
 
       // 调用AI服务生成回复
       await aiService.generateAIResponse(
@@ -143,79 +139,23 @@ Page({
         text => {
           // 如果用户已经终止了回复生成，则不再更新消息
           if (this.data.isGeneratingStopped) {
+            // 如果用户已经终止了回复生成，则不再更新消息
             return
           }
 
-          // 去除markdown语法
-          const formattedText = markdownUtil.stripMarkdown(text)
-
-          // 如果是第一次收到内容，创建新消息
-          if (!messageCreated) {
-            const aiMessageId = this.data.loadingMessageId
-            const initialAiMessage = messageModel.createSystemMessage(aiMessageId, formattedText)
-
-            // 标记为正在生成中
-            initialAiMessage.isGenerating = true
-
-            this.setData({
-              messages: [...this.data.messages, initialAiMessage],
-            })
-
-            messageCreated = true
-          } else {
-            // 否则更新现有消息
-            this.updateMessageContent(formattedText)
-          }
+          // 否则更新现有消息
+          this.updateMessageContent(text)
         }
       )
-
-      // 使用app的方法增加未保存消息计数
-      app.incrementUnsavedCounter(2) // 用户消息和AI回复各算一条
-
-      // 如果用户已经终止了回复生成
-      if (this.data.isGeneratingStopped) {
-        return
-      }
-
-      // 更新最后一条消息，移除isGenerating标志
-      const updatedMessages = [...this.data.messages]
-      if (updatedMessages.length > 0) {
-        const lastMessage = updatedMessages[updatedMessages.length - 1]
-        if (lastMessage.isGenerating) {
-          delete lastMessage.isGenerating
-        }
-      }
-
-      // 生成新的推荐问题，传递上下文信息
-      const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
-
-      // 更新UI状态
-      this.setData(
-        {
-          messages: updatedMessages,
-          recommendedQuestions: recommendedQuestions,
-          isLoading: false,
-          loadingMessageId: null,
-        },
-        () => {
-          // 滚动到底部
-          this.scrollToBottom()
-        }
-      )
-
-      // 保存最近200条聊天记录到缓存
-      this.saveChatHistoryToCache(updatedMessages.slice(-200))
     } catch (error) {
       // 处理错误
       Logger.error('生成AI回复时出错:', error)
 
       // 在最近的一条消息后面添加一条AI回复错误的消息
       const errorContent = '抱歉，生成回复时出现了错误，请稍后再试。'
-      const updatedMessages = chatService.addSystemMessage(errorContent, this.data.messages)
+      const newMessage = chatService.createSystemMessage(errorContent, this.data.messages.length)
       this.setData({
-        messages: updatedMessages,
-        isLoading: false,
-        loadingMessageId: null,
+        messages: [...this.data.messages, newMessage],
       })
     }
   },
@@ -236,59 +176,6 @@ Page({
         messages: [...messages.slice(0, -1), newMessage],
       })
     }
-  },
-
-  // 保存聊天记录到缓存
-  async saveChatHistoryToCache(updatedMessages) {
-    // 尝试获取锁，如果已锁定则等待
-    if (app.globalData._saveOperationLock) {
-      Logger.info('saveChatHistoryToCache 等待释放锁')
-      setTimeout(() => this.saveChatHistoryToCache(updatedMessages), 100)
-      return
-    }
-
-    // 上锁
-    app.globalData._saveOperationLock = true
-
-    try {
-      wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, updatedMessages)
-    } catch (error) {
-      Logger.error('保存聊天记录到缓存失败', error)
-    } finally {
-      // 解锁
-      app.globalData._saveOperationLock = false
-    }
-  },
-
-  // 滚动到底部
-  scrollToBottom() {
-    setTimeout(() => {
-      wx.createSelectorQuery()
-        .select('#message-container')
-        .node()
-        .exec(res => {
-          if (res && res[0] && res[0].node) {
-            const scrollView = res[0].node
-            // 尝试滚动到最后一个消息项
-            scrollView.scrollIntoView({
-              selector: '.message-item:last-child, .loading-container',
-              animated: true,
-            })
-          } else {
-            // 兼容旧方法
-            wx.createSelectorQuery()
-              .select('#message-container')
-              .boundingClientRect(rect => {
-                if (rect) {
-                  this.setData({
-                    scrollTop: 100000, // 使用一个足够大的值确保滚动到底部
-                  })
-                }
-              })
-              .exec()
-          }
-        })
-    }, 100)
   },
 
   // 清空聊天记录
@@ -447,16 +334,6 @@ Page({
 
     // 记录日志
     Logger.info('用户终止了回复生成')
-
-    // 生成新的推荐问题
-    const recommendedQuestions = await aiService.generateRecommendedQuestions(this.data.messages)
-
-    // 更新UI状态
-    this.setData({
-      recommendedQuestions: recommendedQuestions,
-      isLoading: false,
-      loadingMessageId: null,
-    })
   },
 
   // 分享消息

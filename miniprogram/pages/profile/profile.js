@@ -129,10 +129,13 @@ Page({
           key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
           data: prompt,
         }),
-        wx.setStorage({
-          key: STORAGE_KEYS.HEALTH_RECORDS,
-          data: healthRecords,
-        }),
+        // 使用 reduce 遍历所有字段并保存
+        ...Object.entries(healthRecords).map(([field, value]) =>
+          wx.setStorage({
+            key: field,
+            data: value,
+          })
+        ),
       ])
     } catch (err) {
       Logger.error('登录失败', err)

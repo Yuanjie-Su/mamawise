@@ -13,11 +13,12 @@ const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
  * @param {Array} messagesToSave - 需要保存的聊天消息数组
  * @returns {Promise<void>}
  */
-async function saveChatHistoryToCloud(messagesToSave) {
+async function saveChatHistoryToCloud(messagesUnsavedNumber) {
   try {
+    const messages = await getChatHistoryFromCache()
     const res = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.ADD_CHAT_HISTORY,
-      data: { messagesToSave: messagesToSave },
+      data: { messagesToSave: messages.slice(-messagesUnsavedNumber) },
     })
     if (!res || !res.result || !res.result.success) {
       return {
@@ -56,6 +57,22 @@ async function getChatHistoryFromCloud() {
     Logger.error('获取聊天记录失败', error)
     return []
   }
+}
+
+/**
+ * 保存聊天记录到本地缓存
+ * @param {Array} messages - 聊天消息数组
+ */
+async function saveChatHistoryToCache(messages) {
+  await wx.setStorage({
+    key: STORAGE_KEYS.CHAT_HISTORY,
+    data: messages,
+  })
+  const unsavedCounter = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER) || 0
+  await wx.setStorage({
+    key: STORAGE_KEYS.UNSAVED_COUNTER,
+    data: unsavedCounter + 2,
+  })
 }
 
 /**
@@ -114,16 +131,14 @@ function addUserMessage(content, messages) {
  * @param {Array} messages - 当前消息数组
  * @returns {Array} 更新后的消息数组
  */
-function addSystemMessage(content, messages) {
+function createSystemMessage(content, messageId) {
   const newMessage = {
-    id: messages.length + 1,
+    id: messageId,
     type: 'system',
     content: content,
   }
 
-  const updatedMessages = [...messages, newMessage]
-
-  return updatedMessages
+  return newMessage
 }
 
 /**
@@ -146,9 +161,10 @@ function updateLastMessage(content, messages) {
 export default {
   saveChatHistoryToCloud,
   getChatHistoryFromCloud,
+  saveChatHistoryToCache,
   getChatHistoryFromCache,
   clearChatHistory,
   addUserMessage,
-  addSystemMessage,
+  createSystemMessage,
   updateLastMessage,
 }

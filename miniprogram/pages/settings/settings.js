@@ -56,14 +56,8 @@ Page({
           // 更新全局状态
           app.globalData.isLoggedIn = false
 
-          // 清除本地存储中的用户信息和登录状态
-          wx.removeStorageSync(STORAGE_KEYS.USER_INFO)
-          wx.removeStorageSync(STORAGE_KEYS.IS_LOGGED_IN)
-          wx.removeStorageSync(STORAGE_KEYS.HEALTH_RECORDS)
-          wx.removeStorageSync(STORAGE_KEYS.CHAT_HISTORY)
-          wx.removeStorageSync(STORAGE_KEYS.PROMPT_HEALTH_RECORDS)
-          wx.removeStorageSync(STORAGE_KEYS.UNSAVED_COUNTER)
-
+          // 清除所有本地缓存
+          wx.clearStorageSync()
           Logger.info('用户登出成功')
         }
       },

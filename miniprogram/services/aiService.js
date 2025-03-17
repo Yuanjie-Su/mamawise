@@ -20,89 +20,92 @@ let isGenerationStopped = false
  * @returns {Promise} 返回生成结果的Promise
  */
 async function generateAIResponse(messages, userQuery, prompt, model_name, onProgress) {
-  try {
-    // 重置停止标志
-    isGenerationStopped = false
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 重置停止标志
+      isGenerationStopped = false
 
-    // 用于跟踪是否已接收到第一段内容
-    let hasReceivedFirstContent = false
+      // 用于跟踪是否已接收到第一段内容
+      let hasReceivedFirstContent = false
 
-    // 构建消息历史
-    const messageHistory = messages.map(msg => ({
-      role: msg.type === 'user' ? 'user' : 'assistant',
-      content: msg.content,
-    }))
+      // 构建消息历史
+      const messageHistory = messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+      }))
 
-    if (!prompt) {
-      prompt = DEFAULT_AI_CONFIG.PROMPT
-    }
-
-    // 添加系统提示词
-    messageHistory.unshift({
-      role: 'system',
-      content: prompt,
-    })
-
-    // 获取当前选择的模型配置
-    const modelConfig = MODEL_CONFIG[model_name]
-
-    if (!modelConfig) {
-      throw new Error(`未找到模型配置: ${model_name}`)
-    }
-
-    // 创建模型实例
-    const model = wx.cloud.extend.AI.createModel('deepseek')
-
-    // 使用流式响应
-    const res = await model.streamText({
-      data: {
-        model: modelConfig.api,
-        messages: [
-          ...messageHistory,
-          {
-            role: 'user',
-            content: userQuery,
-          },
-        ],
-      },
-    })
-
-    // 处理eventStream响应
-    for await (let event of res.eventStream) {
-      // 如果生成已被停止，中断循环
-      if (isGenerationStopped) {
-        Logger.info('AI回复生成已被用户终止')
-        break
+      if (!prompt) {
+        prompt = DEFAULT_AI_CONFIG.PROMPT
       }
 
-      if (event.data === '[DONE]') break
+      // 添加系统提示词
+      messageHistory.unshift({
+        role: 'system',
+        content: prompt,
+      })
 
-      const data = JSON.parse(event.data)
-      const text = data?.choices?.[0]?.delta?.content
+      // 获取当前选择的模型配置
+      const modelConfig = MODEL_CONFIG[model_name]
 
-      if (text && onProgress) {
-        // 去除开头的空白行
-        let processedText = text
-        if (!hasReceivedFirstContent) {
-          processedText = text.replace(/^\n+/, '')
-          hasReceivedFirstContent = true
+      if (!modelConfig) {
+        throw new Error(`未找到模型配置: ${model_name}`)
+      }
+
+      // 创建模型实例
+      const model = wx.cloud.extend.AI.createModel('deepseek')
+
+      // 使用流式响应
+      const res = await model.streamText({
+        data: {
+          model: modelConfig.api,
+          messages: [
+            ...messageHistory,
+            {
+              role: 'user',
+              content: userQuery,
+            },
+          ],
+        },
+      })
+
+      // 处理eventStream响应
+      for await (let event of res.eventStream) {
+        // 如果生成已被停止，中断循环
+        if (isGenerationStopped) {
+          Logger.info('AI回复生成已被用户终止')
+          break
         }
 
-        onProgress(processedText)
+        if (event.data === '[DONE]') break
+
+        const data = JSON.parse(event.data)
+        const text = data?.choices?.[0]?.delta?.content
+
+        if (text && onProgress) {
+          // 去除开头的空白行
+          let processedText = text
+          if (!hasReceivedFirstContent) {
+            processedText = text.replace(/^\n+/, '')
+            hasReceivedFirstContent = true
+          }
+
+          onProgress(processedText)
+        }
       }
-    }
 
-    return true
-  } catch (error) {
-    // 如果是因为用户终止而导致的错误，不需要抛出
-    if (isGenerationStopped) {
-      Logger.info('AI回复生成已被用户终止')
-      return true
-    }
+      resolve(true)
+    } catch (error) {
+      // 如果是因为用户终止而导致的错误，不需要抛出
+      if (isGenerationStopped) {
+        Logger.info('AI回复生成已被用户终止')
+        resolve(true)
+        return
+      }
 
-    Logger.error('生成AI回复时出错:', error)
-    throw error
-  }
+      Logger.error('生成AI回复时出错:', error)
+      reject(error)
+    }
+  })
 }
 
 /**
@@ -112,76 +115,25 @@ async function generateAIResponse(messages, userQuery, prompt, model_name, onPro
  * @param {Number} questionCount - 需要生成的问题数量，默认为3
  * @returns {Promise<Array>} 返回推荐问题数组的Promise
  */
-async function generateRecommendedQuestions(messages, questionCount = 3) {
+async function generateRecommendedQuestions(query, questionCount = 3) {
   try {
     // 系统提示词
-    let systemPrompt = ''
-    // 消息历史
-    let messageHistory = []
-    // 检查是否有聊天记录
-    if (messages.length > 0) {
-      // 有历史聊天记录的情况
-      systemPrompt = `基于以下聊天历史，生成${questionCount}个用户可能想继续问的问题。
-      这些问题应该与孕期健康、胎儿发育、产后护理或相关话题有关，并且与聊天内容紧密相关。
-      只返回问题，每行一个，不要有编号或其他格式。\n\n`
-
-      // 获取最近的2条消息作为上下文
-      const recentMessages = messages.slice(-2)
-      // 构建消息历史
-      messageHistory = recentMessages.map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content,
-      }))
-    } else {
-      // 没有聊天记录的情况
-      systemPrompt = `请为用户生成${questionCount}个关于孕期健康、胎儿发育或产后护理的初始问题。
-      这些问题应该对孕产妇有帮助，并且能够引导用户开始对话。
-      只返回问题，每行一个，不要有编号或其他格式。\n\n`
-    }
-
-    // 添加系统提示词
-    messageHistory.unshift({
-      role: 'system',
-      content: systemPrompt,
-    })
-
-    // // 使用当前选择的模型生成推荐问题,非流式
-    // const model = wx.cloud.extend.AI.createModel("deepseek");
-    // // deepseek-v3响应速度快
-    // const res = await model.generateText({
-    //   model: "deepseek-v3",
-    //   messages: [{ role: "user", content: prompt }],
-    // });
+    const systemPrompt = `生成${questionCount}个与用户提问最相关的问题。
+        只返回问题，每行一个，不要有编号或其他格式。\n\n`
 
     // 创建模型实例
     const model = wx.cloud.extend.AI.createModel('deepseek')
 
-    // 使用流式响应
-    const res = await model.streamText({
-      data: {
-        model: 'deepseek-v3',
-        messages: [
-          ...messageHistory,
-          {
-            role: 'user',
-            content: '',
-          },
-        ],
-      },
+    // 使用生成文本
+    const res = await model.generateText({
+      model: 'deepseek-v3',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query },
+      ],
     })
 
-    let generatedText = ''
-    // 处理eventStream响应
-    for await (let event of res.eventStream) {
-      if (event.data === '[DONE]') break
-
-      const data = JSON.parse(event.data)
-      const text = data?.choices?.[0]?.delta?.content
-
-      if (text) {
-        generatedText += text
-      }
-    }
+    const generatedText = res.choices[0].message.content
 
     if (generatedText) {
       // 处理返回的文本，分割成问题列表
@@ -261,8 +213,10 @@ async function professionalizeContent(content) {
     
     原始内容：${content}`
 
-    // 调用deepseek-v3模型
+    // 创建模型实例
     const model = wx.cloud.extend.AI.createModel('deepseek')
+
+    // 调用deepseek-v3模型
     const res = await model.generateText({
       model: 'deepseek-v3',
       messages: [{ role: 'user', content: prompt }],

@@ -1,7 +1,7 @@
 // pages/records/records.js
 const app = getApp()
 import Logger from '../../utils/logger'
-import healthRecordService from '../../services/healthRecordService'
+import promptService from '../../services/promptService'
 import appConfig from '../../config/appConfig'
 
 const { DEFAULT_HEALTH_RECORDS } = appConfig
@@ -305,57 +305,30 @@ Page({
   // 从本地加载'基本信息', '体征记录', '用药记录', '产检记录'
   async loadHealthRecords() {
     try {
-      let healthRecords = wx.getStorageSync('healthRecords')
-      if (!healthRecords) {
-        // 使用healthRecordService获取健康记录
-        healthRecords = await healthRecordService.getHealthRecords(DEFAULT_HEALTH_RECORDS)
+      // 使用reduce构建数据对象
+      const data = FIELDS.reduce((acc, field) => {
+        // 从本地存储读取每个字段
+        const value = wx.getStorageSync(field) || DEFAULT_HEALTH_RECORDS[field]
+        // 设置默认值
+        const defaultValue = Array.isArray(DEFAULT_HEALTH_RECORDS[field])
+          ? []
+          : typeof DEFAULT_HEALTH_RECORDS[field] === 'object'
+          ? {}
+          : ''
+        // 添加到累加器
+        acc[field] = value || defaultValue
+        return acc
+      }, {})
 
-        // 将健康记录存储到本地
-        wx.setStorage({
-          key: 'healthRecords',
-          data: healthRecords,
-        })
-      }
+      // 一次性设置所有数据
+      this.setData(data)
 
-      Logger.debug('健康记录加载成功', healthRecords)
-
-      // 设置页面数据，使用扁平化的数据结构
-      this.setData({
-        // 孕期信息
-        pregnancyInfo: healthRecords.pregnancyInfo || {},
-        // 过敏信息
-        allergyInfo: healthRecords.allergyInfo || [],
-        // 饮食偏好
-        dietPreference: healthRecords.dietPreference || [],
-        // 其他信息
-        otherInfo: healthRecords.otherInfo || '',
-        // 体征记录
-        // 血压记录
-        bloodPressureRecords: healthRecords.bloodPressureRecords || [],
-        // 体重记录
-        weightRecords: healthRecords.weightRecords || [],
-        // 血糖记录
-        bloodSugarRecords: healthRecords.bloodSugarRecords || [],
-        // 体温记录
-        temperatureRecords: healthRecords.temperatureRecords || [],
-        // 心率记录
-        heartRateRecords: healthRecords.heartRateRecords || [],
-        // 胎动记录
-        fetalMovementRecords: healthRecords.fetalMovementRecords || [],
-        // 药物记录
-        medications: healthRecords.medications || [],
-        // 检查记录
-        checkupRecords: healthRecords.checkupRecords || [],
-        // 检查分析
-        checkupAnalysis: healthRecords.checkupAnalysis || '',
-      })
-
-      console.log('健康记录加载成功')
+      Logger.info('健康记录加载成功')
     } catch (e) {
       this.setData({
         ...DEFAULT_HEALTH_RECORDS,
       })
-      console.error('加载健康记录失败:', e)
+      Logger.error('加载健康记录失败:', e)
     }
   },
 
@@ -1714,18 +1687,8 @@ Page({
   // 更新提示词
   async updateHealthRecordsAndPrompt(updateType, partialRecords) {
     try {
-      // 检查全局提示词对象是否存在
-      if (!app.globalData.prompt) {
-        app.globalData.prompt = {
-          prefix: promptService.getDefaultPrompt(),
-          healthRecords: '',
-        }
-      }
-
-      // 使用 promptService 中的 updatePartialRcordsPrompt 函数更新提示词
-      const oldPrompt = app.globalData.prompt.healthRecords || ''
       const updatedPrompt = promptService.updatePartialRcordsPrompt(
-        oldPrompt,
+        app.globalData.DEFAULT_HEALTH_RECORDS,
         updateType,
         partialRecords
       )
@@ -1733,26 +1696,15 @@ Page({
       // 更新全局提示词对象中的健康记录部分
       app.globalData.prompt.healthRecords = updatedPrompt
 
-      // 保存到本地存储
-      try {
-        // 使用解构赋值提取属性
-        const healthRecords = FIELDS.reduce((acc, field) => {
-          acc[field] = this.data[field]
-          return acc
-        }, {})
+      wx.setStorage({
+        key: updateType,
+        data: partialRecords,
+      })
 
-        wx.setStorage({
-          key: `healthRecords`,
-          data: healthRecords,
-        })
-
-        wx.setStorage({
-          key: `prompt_healthRecords`,
-          data: updatedPrompt,
-        })
-      } catch (error) {
-        console.error('更新健康记录和提示词失败:', error)
-      }
+      wx.setStorage({
+        key: DEFAULT_HEALTH_RECORDS,
+        data: updatedPrompt,
+      })
 
       Logger.info('提示词已更新', updatedPrompt)
     } catch (e) {
