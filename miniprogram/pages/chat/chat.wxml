@@ -71,11 +71,8 @@
               <view class="action-btn copy-btn" catchtap="copyMessage" data-content="{{item.content}}">
                 <image class="action-icon" src="/images/icons/copy.png" mode="aspectFit"></image>
               </view>
-              <view class="action-btn share-btn" catchtap="shareMessage" data-content="{{item.content}}" data-index="{{index}}">
+              <view class="action-btn share-btn" catchtap="shareMessage" data-content="{{item.content}}" data-index="{{index}}" data-id="{{item.id}}">
                 <image class="action-icon" src="/images/icons/share.png" mode="aspectFit"></image>
-              </view>
-              <view class="action-btn favorite-btn {{item.isFavorited ? 'disabled' : 'enable'}}" catchtap="{{item.isFavorited ? '' : 'toggleFavorite'}}" data-content="{{item.content}}" data-id="{{item.id}}">
-                <image class="action-icon" src="{{item.isFavorited ? '/images/icons/favorited.png' : '/images/icons/favorite.png'}}" mode="aspectFit"></image>
               </view>
             </view>
           </view>

@@ -166,8 +166,7 @@ async function generateRecommendedQuestions(query, questionCount = 3) {
 
 /**
  * 获取默认推荐问题
- * @param
- * @returns {Promise<Array>} 返回推荐问题数组的Promise
+ * @returns {Array} 返回推荐问题数组
  */
 function getDefaultRecommendedQuestions() {
   return getRandomItems(DEFAULT_AI_CONFIG.RECOMMENDED_QUESTIONS, 3)

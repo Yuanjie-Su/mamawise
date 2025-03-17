@@ -14,7 +14,7 @@ const app = getApp()
  * 用户登录
  * @returns {Promise<Object>} 登录结果
  */
-async function login() {
+async function login(healthRecords) {
   try {
     // 1. 检查权限（异步处理）
     const authSetting = await new Promise((resolve, reject) => {
@@ -53,13 +53,13 @@ async function login() {
     // 4. 调用云函数（添加错误处理）
     const cloudRes = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.LOGIN,
-      data: { userInfo },
+      data: { userInfo, healthRecords },
     })
 
     console.log('cloudRes', cloudRes)
 
     if (cloudRes.result.success) {
-      return cloudRes.result.userInfo
+      return cloudRes.result.data
     } else {
       throw new Error('云函数登录失败:' + cloudRes.result.error || '登录失败')
     }

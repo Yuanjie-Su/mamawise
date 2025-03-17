@@ -52,16 +52,15 @@ Page({
     }
   },
 
-  async loadData() {
-    const [chatHistory, defaultRecommendedQuestions] = await Promise.all([
-      chatService.getChatHistoryFromCache(),
-      aiService.getDefaultRecommendedQuestions(),
-    ])
+  loadData() {
+    const chatHistory = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || []
+    const defaultRecommendedQuestions = aiService.getDefaultRecommendedQuestions()
 
     this.setData({
       isLoggedIn: app.globalData.isLoggedIn,
       messages: chatHistory,
       recommendedQuestions: defaultRecommendedQuestions,
+      scrollTop: 999999,
     })
   },
 
@@ -102,6 +101,7 @@ Page({
     this.setData({
       messages: updatedMessages,
       inputValue: '',
+      scrollTop: 999999,
     })
 
     // 并发生成AI回复和推荐问题
@@ -109,6 +109,9 @@ Page({
       this.generateAIResponse(userQuery),
       aiService.generateRecommendedQuestions(userQuery),
     ])
+
+    // 保存聊天记录
+    chatService.saveChatHistoryToCache(this.data.messages, 2)
 
     this.setData({
       isLoading: false,
@@ -185,11 +188,12 @@ Page({
       content: '确定要清空所有聊天记录吗？',
       success: res => {
         if (res.confirm) {
-          chatService.clearChatHistory().then(() => {
-            this.setData({
-              messages: [],
-              recommendedQuestions: aiService.getDefaultRecommendedQuestions(),
-            })
+          wx.removeStorage({
+            key: STORAGE_KEYS.CHAT_HISTORY,
+          })
+          this.setData({
+            messages: [],
+            recommendedQuestions: aiService.getDefaultRecommendedQuestions(),
           })
         }
       },
@@ -340,6 +344,7 @@ Page({
   shareMessage(e) {
     const content = e.currentTarget.dataset.content
     const index = e.currentTarget.dataset.index
+    const messageId = e.currentTarget.dataset.id
 
     // 检查内容是否包含Markdown语法
     const containsMarkdown = markdownUtil.containsMarkdown(content)
@@ -349,10 +354,13 @@ Page({
 
     // 显示分享选项
     wx.showActionSheet({
-      itemList: ['分享文本', '分享图片', '保存到相册'],
+      itemList: ['收藏内容', '分享文本', '分享图片', '保存到相册'],
       success: res => {
         switch (res.tapIndex) {
-          case 0: // 分享文本
+          case 0: // 收藏内容
+            this.toggleFavorite(content, messageId)
+            break
+          case 1: // 分享文本
             // 设置分享内容
             this.setData({
               shareContent: shareContent,
@@ -364,7 +372,7 @@ Page({
               menus: ['shareAppMessage'],
             })
             break
-          case 1: // 分享图片
+          case 2: // 分享图片
             // 保存当前要分享的消息索引
             this.setData({
               currentShareMessageIndex: index,
@@ -377,7 +385,7 @@ Page({
               }
             })
             break
-          case 2: // 保存到相册
+          case 3: // 保存到相册
             // 保存当前要分享的消息索引
             this.setData({
               currentShareMessageIndex: index,
@@ -418,7 +426,7 @@ Page({
   },
 
   // 收藏消息
-  async toggleFavorite(e) {
+  async toggleFavorite(content, messageId) {
     // 检查登录状态
     if (!this.data.isLoggedIn) {
       wx.showModal({
@@ -438,17 +446,6 @@ Page({
       return
     }
 
-    const { content, id: messageId } = e.currentTarget.dataset
-
-    // 获取并更新消息状态
-    const messages = [...this.data.messages]
-    const messageIndex = messages.findIndex(msg => msg.id === messageId)
-    if (messageIndex === -1 || messages[messageIndex].isFavorited) return
-
-    // 立即更新UI状态
-    messages[messageIndex].isFavorited = true
-    this.setData({ messages })
-
     try {
       // 准备收藏数据
       const now = new Date()
@@ -458,20 +455,35 @@ Page({
         title,
         content: contentProcessed,
         date: this.formatDate(now),
-        timestamp: now.toISOString(),
-        messageId,
       }
 
-      // 获取现有收藏列表
-      const favorites = wx.getStorageSync(STORAGE_KEYS.FAVORITES) || []
+      const res = await wx.getStorage({
+        key: STORAGE_KEYS.FAVORITES,
+      })
+      const favorites = res.data || []
+
+      // 添加到收藏列表
       favorites.push(newFavorite)
 
       // 保存到本地存储
-      wx.setStorage(STORAGE_KEYS.FAVORITES, favorites)
-
-      wx.showToast({
-        title: '收藏成功',
-        icon: 'success',
+      wx.setStorage({
+        key: STORAGE_KEYS.FAVORITES,
+        data: favorites,
+        success: () => {
+          wx.showToast({
+            title: '收藏成功',
+            icon: 'success',
+          })
+          // 更新本地缓存中收藏列表发生变化
+          wx.setStorageSync(STORAGE_KEYS.FAVORITES_CHANGED, true)
+        },
+        fail: err => {
+          Logger.error('收藏失败', err)
+          wx.showToast({
+            title: '收藏失败',
+            icon: 'none',
+          })
+        },
       })
     } catch (error) {
       Logger.error('收藏失败', error)
@@ -479,14 +491,7 @@ Page({
         title: '收藏失败',
         icon: 'none',
       })
-
-      // 重置收藏状态
-      messages[messageIndex].isFavorited = false
-      this.setData({ messages })
     }
-
-    // 保存聊天记录
-    chatService.saveChatHistory(this.data.messages)
   },
 
   // 生成分享图片

@@ -15,25 +15,25 @@ const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
  */
 async function saveChatHistoryToCloud(messagesUnsavedNumber) {
   try {
-    const messages = await getChatHistoryFromCache()
+    const messages = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || []
+    if (!messages || messages.length === 0) {
+      return
+    }
     const res = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.ADD_CHAT_HISTORY,
       data: { messagesToSave: messages.slice(-messagesUnsavedNumber) },
     })
     if (!res || !res.result || !res.result.success) {
-      return {
-        success: false,
-        error: res.error || 'cloudfunctions/addChatHistory: 云数据库添加聊天记录失败',
-      }
+      Logger.error('保存聊天记录失败', res.error)
     }
-    return {
-      success: true,
-    }
+    const currentUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER) || 0
+    const newUnsavedNumber =
+      messagesUnsavedNumber <= currentUnsavedNumber
+        ? currentUnsavedNumber - messagesUnsavedNumber
+        : 0
+    wx.setStorageSync(STORAGE_KEYS.UNSAVED_COUNTER, newUnsavedNumber)
   } catch (cloudError) {
-    return {
-      success: false,
-      error: cloudError || 'chatService.saveChatHistory: 云数据库添加聊天记录失败',
-    }
+    Logger.error('保存聊天记录失败', cloudError)
   }
 }
 
@@ -63,48 +63,13 @@ async function getChatHistoryFromCloud() {
  * 保存聊天记录到本地缓存
  * @param {Array} messages - 聊天消息数组
  */
-async function saveChatHistoryToCache(messages) {
+async function saveChatHistoryToCache(messages, newMessagesNumber = 2) {
   await wx.setStorage({
     key: STORAGE_KEYS.CHAT_HISTORY,
     data: messages,
   })
   const unsavedCounter = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER) || 0
-  await wx.setStorage({
-    key: STORAGE_KEYS.UNSAVED_COUNTER,
-    data: unsavedCounter + 2,
-  })
-}
-
-/**
- * 从本地缓存获取聊天记录
- * @returns {Promise<Array>} 聊天消息数组
- */
-async function getChatHistoryFromCache() {
-  return new Promise(resolve => {
-    try {
-      const chatHistory = wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY) || []
-      resolve(chatHistory)
-    } catch (error) {
-      Logger.error('获取聊天记录失败', error)
-      resolve([])
-    }
-  })
-}
-
-/**
- * 清空聊天记录
- * @returns {Promise<void>}
- */
-function clearChatHistory() {
-  return new Promise(resolve => {
-    try {
-      wx.removeStorageSync(STORAGE_KEYS.CHAT_HISTORY)
-      resolve()
-    } catch (error) {
-      Logger.error('清空聊天记录失败', error)
-      resolve()
-    }
-  })
+  wx.setStorageSync(STORAGE_KEYS.UNSAVED_COUNTER, unsavedCounter + newMessagesNumber)
 }
 
 /**
@@ -158,13 +123,36 @@ function updateLastMessage(content, messages) {
   return updatedMessages
 }
 
+/**
+ * 保存收藏列表到云数据库
+ */
+async function saveFavoritesToCloud() {
+  const res = await wx.getStorage({
+    key: STORAGE_KEYS.FAVORITES,
+  })
+  const unsavedFavorites = res.data || []
+
+  // 预先更新本地缓存中收藏列表已保存
+  wx.setStorageSync(STORAGE_KEYS.FAVORITES_CHANGED, false)
+
+  const cloudRes = await wx.cloud.callFunction({
+    name: CLOUD_FUNCTIONS.UPDATE_FAVORITES,
+    data: { unsavedFavorites },
+  })
+
+  if (!cloudRes || !cloudRes.result || !cloudRes.result.success) {
+    Logger.error('保存收藏列表失败', cloudRes.error)
+    // 如果保存失败，则恢复本地缓存中收藏列表已保存
+    wx.setStorageSync(STORAGE_KEYS.FAVORITES_CHANGED, true)
+  }
+}
+
 export default {
   saveChatHistoryToCloud,
   getChatHistoryFromCloud,
   saveChatHistoryToCache,
-  getChatHistoryFromCache,
-  clearChatHistory,
   addUserMessage,
   createSystemMessage,
   updateLastMessage,
+  saveFavoritesToCloud,
 }

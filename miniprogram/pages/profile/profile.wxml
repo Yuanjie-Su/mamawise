@@ -3,7 +3,7 @@
   <!-- 用户信息卡片 -->
   <view class="user-card">
     <view class="user-info">
-      <image class="user-avatar" src="{{isLoggedIn ? userInfo.avatarUrl : '/images/default_avatar.png'}}" bindtap="previewAvatar"></image>
+      <image class="user-avatar" src="{{isLoggedIn ? userInfo.avatarUrl : '/images/default_avatar.png'}}"></image>
       <view class="user-details">
         <view class="username-container" wx:if="{{isLoggedIn}}">
           <text class="username">{{userInfo.nickName}}</text>

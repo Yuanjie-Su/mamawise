@@ -1,5 +1,5 @@
 {
-  "name": "updateFavorite",
+  "name": "updateFavorites",
   "version": "1.0.0",
   "description": "更新收藏的云函数",
   "main": "index.js",

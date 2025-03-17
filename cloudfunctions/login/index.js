@@ -1,21 +1,3 @@
-// 登录，输入示例
-// {
-//   "userInfo": {
-//     "nickName": "张三",
-//     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
-//   }
-// }
-// 数据库中没有_openid对应的记录，返回传入的userInfo；否则返回数据库中的userInfo
-// 返回示例
-// {
-//   "success": true,
-//   "userInfo": {
-//     "nickName": "张三",
-//     "avatarUrl": "https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83eqTq60WK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQK6wQ/132"
-//   }
-//   "error": null
-// }
-
 const cloud = require('wx-server-sdk')
 
 // 环境初始化
@@ -27,12 +9,11 @@ const db = cloud.database()
 
 /**
  * 登录处理核心逻辑
- * @param {Object} event - 包含code和userInfo的请求参数
- * @returns {Promise<Object>} 标准化响应格式
+ * @param {Object} event - 包含userInfo的请求参数
+ * @returns {Object} 标准化响应格式
  */
 exports.main = async (event, context) => {
   try {
-    // 参数校验
     const { userInfo } = event
     // 获取openid
     const openid = cloud.getWXContext().OPENID
@@ -48,41 +29,138 @@ exports.main = async (event, context) => {
 
 /* 用户数据操作核心逻辑 */
 async function handleUserOperation(openid, userInfo) {
-  const userCollection = db.collection('users')
-  // 查询现有用户
-  const userDoc = await userCollection
-    .where({
-      _openid: openid,
+  // 并发获取users表中用户信息、healthRecords表中健康记录、prompts表中提示词、chatHistory表中聊天记录
+  return Promise.all([
+    // 用户表操作
+    db
+      .collection('users')
+      .where({
+        _openid: openid,
+      })
+      .get()
+      .then(res => {
+        if (res.data.length === 0) {
+          // 不存在，注册用户
+          return db
+            .collection('users')
+            .add({
+              data: { _openid: openid, ...userInfo },
+            })
+            .then(res => {
+              return userInfo
+            })
+        } else {
+          // 返回用户昵称和头像
+          return {
+            nickName: res.data[0].nickName,
+            avatarUrl: res.data[0].avatarUrl,
+          }
+        }
+      })
+      .then(result => {
+        return result
+      }),
+
+    // 聊天记录表操作（初始化空数组）
+    db
+      .collection('chat_history')
+      .where({ _openid: openid })
+      .get()
+      .then(res => {
+        if (res.data.length === 0) {
+          return null
+        } else {
+          const messages = res.data[0].messages
+          if (messages.length > 200) {
+            return messages.slice(-200)
+          } else {
+            return messages
+          }
+        }
+      })
+      .then(result => {
+        return result
+      }),
+
+    // 提示词表操作
+    db
+      .collection('prompts')
+      .where({ _openid: openid })
+      .get()
+      .then(res => {
+        if (res.data.length === 0) {
+          return null
+        } else {
+          // 返回除openid、id外的数据
+          return res.data[0].healthRecordsPrompt
+        }
+      })
+      .then(result => {
+        return result
+      }),
+
+    // 健康记录表操作（批量插入默认数据）
+    db
+      .collection('health_records')
+      .where({
+        _openid: openid,
+      })
+      .get()
+      .then(res => {
+        if (res.data.length === 0) {
+          return null
+        } else {
+          // 返回除openid、id外的数据
+          return Object.fromEntries(
+            Object.entries(res.data).filter(([key]) => key !== '_openid' && key !== 'id')
+          )
+        }
+      })
+      .then(result => {
+        return result
+      }),
+
+    // 收藏夹表操作
+    db
+      .collection('favorites')
+      .where({ _openid: openid })
+      .get()
+      .then(res => {
+        if (res.data.length === 0) {
+          return null
+        } else {
+          const favorites = res.data[0].favorites
+          if (favorites.length > 50) {
+            return favorites.slice(-50)
+          } else {
+            return favorites
+          }
+        }
+      })
+      .then(result => {
+        return result
+      }),
+  ])
+    .then(results => {
+      // 返回成功响应
+      return buildSuccessResponse({
+        userInfo: results[0],
+        chatHistory: results[1],
+        healthRecordsPrompt: results[2],
+        healthRecords: results[3],
+        favorites: results[4],
+      })
     })
-    .get()
-
-  // 用户存在时返回数据
-  if (userDoc.data.length > 0) {
-    return buildSuccessResponse({
-      nickName: userDoc.data[0].nickName,
-      avatarUrl: userDoc.data[0].avatarUrl,
+    .catch(err => {
+      return buildErrorResponse(err)
     })
-  }
-
-  // 用户不存在时创建
-  await userCollection.add({
-    data: {
-      _openid: openid,
-      nickName: userInfo.nickName,
-      avatarUrl: userInfo.avatarUrl,
-    },
-    setUnionId: false,
-  })
-
-  // 返回成功响应
-  return buildSuccessResponse(userInfo)
 }
 
 /* 响应构建工具函数 */
-function buildSuccessResponse(userData) {
+function buildSuccessResponse(data) {
   return {
     success: true,
-    userInfo: userData,
+    data: data,
     error: null,
   }
 }
@@ -106,7 +184,7 @@ function buildErrorResponse(error) {
 
   return {
     success: false,
-    userInfo: null,
+    data: null,
     error: {
       code: error.code,
       message: errMsg,

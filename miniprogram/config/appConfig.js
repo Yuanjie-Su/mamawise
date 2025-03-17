@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   HEALTH_RECORDS: 'healthRecords', // 健康记录
   FAVORITES: 'favorites', // 收藏
   UNSAVED_COUNTER: 'unsavedCounter', // 未保存消息计数器
+  FAVORITES_CHANGED: 'favoritesChanged', // 收藏列表是否发生变化
 }
 
 // API配置
@@ -42,7 +43,7 @@ const CLOUD_FUNCTIONS = {
   LOGIN: 'login',
   ADD_CHAT_HISTORY: 'addChatHistory',
   ADD_HEALTH_RECORD: 'addHealthRecord',
-  ADD_FAVORITE: 'addFavorite',
+  UPDATE_FAVORITES: 'updateFavorites',
   DELETE_CHAT_HISTORY: 'deleteChatHistory',
   DELETE_FAVORITE: 'deleteFavorite',
   DELETE_HEALTH_RECORD: 'deleteHealthRecord',

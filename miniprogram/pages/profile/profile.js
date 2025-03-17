@@ -3,9 +3,6 @@ import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
 import userService from '../../services/userService'
-import chatService from '../../services/chatService'
-import promptService from '../../services/promptService'
-import healthRecordService from '../../services/healthRecordService'
 const { STORAGE_KEYS, CLOUD_FUNCTIONS, DEFAULT_HEALTH_RECORDS } = appConfig
 
 Page({
@@ -92,52 +89,68 @@ Page({
 
   // 用户登录
   async login() {
+    wx.showLoading({
+      title: '登录中...',
+    })
+
     try {
-      const [userInfo, chatHistory, prompt, healthRecords] = await Promise.all([
-        // 登录,获取用户信息
-        userService.login(),
-        // 获取聊天记录
-        chatService.getChatHistoryFromCloud(),
-        // 获取提示词
-        promptService.getPrompt(),
-        // 获取健康记录
-        healthRecordService.getHealthRecords(DEFAULT_HEALTH_RECORDS),
-      ])
+      const data = await userService.login(DEFAULT_HEALTH_RECORDS)
 
       this.setData({
-        userInfo,
+        userInfo: data.userInfo,
         isLoggedIn: true,
       })
 
       // 更新全局状态
       app.globalData.isLoggedIn = true
+      app.globalData.prompt_healthRecords = data.healthRecordsPrompt || ''
 
       await Promise.all([
+        // 更新用户信息
         wx.setStorage({
           key: STORAGE_KEYS.USER_INFO,
-          data: userInfo,
+          data: data.userInfo,
         }),
+
+        // 更新登录状态
         wx.setStorage({
           key: STORAGE_KEYS.IS_LOGGED_IN,
           data: true,
         }),
+
+        // 更新聊天记录
         wx.setStorage({
           key: STORAGE_KEYS.CHAT_HISTORY,
-          data: chatHistory,
+          data: data.chatHistory || pas,
         }),
+
+        // 更新提示词
         wx.setStorage({
           key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
-          data: prompt,
+          data: data.healthRecordsPrompt || '',
         }),
-        // 使用 reduce 遍历所有字段并保存
-        ...Object.entries(healthRecords).map(([field, value]) =>
-          wx.setStorage({
-            key: field,
-            data: value,
-          })
-        ),
+
+        wx.setStorage({
+          key: STORAGE_KEYS.HEALTH_RECORDS,
+          data: data.healthRecords || DEFAULT_HEALTH_RECORDS,
+        }),
+
+        // 更新收藏夹
+        wx.setStorage({
+          key: STORAGE_KEYS.FAVORITES,
+          data: data.favorites || [],
+        }),
       ])
+
+      wx.hideLoading()
     } catch (err) {
+      // 提示用户登录失败
+      wx.showToast({
+        title: '登录失败，请重试\n' + err.message,
+        icon: 'none',
+        duration: 2000,
+      })
+
       Logger.error('登录失败', err)
     }
   },
@@ -176,102 +189,105 @@ Page({
           title: '上传中...',
         })
 
-        // 上传图片到云存储
-        const cloudPath = `mamawise/miniprogram/images/user_avatar/${
-          app.globalData.openid || 'user'
-        }_${new Date().getTime()}.png`
-        wx.cloud.uploadFile({
-          cloudPath: cloudPath,
-          filePath: tempFilePath,
-          success: res => {
-            const fileID = res.fileID
+        // 压缩图片，设置宽度为200，保持原比例
+        wx.compressImage({
+          src: tempFilePath,
+          quality: 80, // 压缩质量，80%已经是很好的压缩比例
+          compressedWidth: 200, // 宽度设置为200px，适合头像显示
+          success: compressRes => {
+            const compressedPath = compressRes.tempFilePath
 
-            // 调用云函数更新用户头像
-            wx.cloud
-              .callFunction({
-                name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-                data: {
-                  property: 'avatarUrl',
-                  value: fileID,
-                },
-              })
-              .then(res => {
+            // 上传压缩后的图片到云存储
+            const cloudPath = `mamawise/miniprogram/images/user_avatar/${
+              app.globalData.openid || 'user'
+            }_${new Date().getTime()}.png`
+
+            wx.cloud.uploadFile({
+              cloudPath: cloudPath,
+              filePath: compressedPath,
+              success: res => {
+                const fileID = res.fileID
+
+                // 调用云函数更新用户头像
+                wx.cloud
+                  .callFunction({
+                    name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
+                    data: {
+                      property: 'avatarUrl',
+                      value: fileID,
+                    },
+                  })
+                  .then(res => {
+                    wx.hideLoading()
+
+                    if (!res || !res.result) {
+                      wx.showToast({
+                        title: '更新失败，请重试',
+                        icon: 'none',
+                      })
+                      return
+                    }
+
+                    const { success, error } = res.result
+
+                    if (success) {
+                      // 更新本地状态
+                      const updatedUserInfo = {
+                        ...this.data.userInfo,
+                        avatarUrl: fileID,
+                      }
+
+                      this.setData({
+                        userInfo: updatedUserInfo,
+                      })
+
+                      // 更新本地存储
+                      wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
+
+                      wx.showToast({
+                        title: '头像已更新',
+                        icon: 'success',
+                      })
+
+                      Logger.info('用户头像已更新', { fileID })
+                    } else {
+                      Logger.error('更新头像失败', error)
+                      wx.showToast({
+                        title: '更新失败，请重试',
+                        icon: 'none',
+                      })
+                    }
+                  })
+                  .catch(err => {
+                    wx.hideLoading()
+                    Logger.error('更新头像失败', err)
+                    wx.showToast({
+                      title: '更新失败，请重试',
+                      icon: 'none',
+                    })
+                  })
+              },
+              fail: err => {
                 wx.hideLoading()
-
-                if (!res || !res.result) {
-                  wx.showToast({
-                    title: '更新失败，请重试',
-                    icon: 'none',
-                  })
-                  return
-                }
-
-                const { success, error } = res.result
-
-                if (success) {
-                  // 更新本地状态
-                  const updatedUserInfo = {
-                    ...this.data.userInfo,
-                    avatarUrl: fileID,
-                  }
-
-                  this.setData({
-                    userInfo: updatedUserInfo,
-                  })
-
-                  // 更新本地存储
-                  wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
-
-                  wx.showToast({
-                    title: '头像已更新',
-                    icon: 'success',
-                  })
-
-                  Logger.info('用户头像已更新', { fileID })
-                } else {
-                  Logger.error('更新头像失败', error)
-                  wx.showToast({
-                    title: '更新失败，请重试',
-                    icon: 'none',
-                  })
-                }
-              })
-              .catch(err => {
-                wx.hideLoading()
-                Logger.error('更新头像失败', err)
+                Logger.error('上传头像失败', err)
                 wx.showToast({
-                  title: '更新失败，请重试',
+                  title: '上传失败，请重试',
                   icon: 'none',
                 })
-              })
+              },
+            })
           },
           fail: err => {
             wx.hideLoading()
-            Logger.error('上传头像失败', err)
+            Logger.error('压缩头像失败', err)
             wx.showToast({
-              title: '上传失败，请重试',
+              title: '图片处理失败，请重试',
               icon: 'none',
             })
           },
         })
       },
     })
-  },
-
-  // 预览头像
-  previewAvatar() {
-    // 只有登录用户才能预览头像
-    if (!this.data.isLoggedIn || !this.data.userInfo.avatarUrl) {
-      return
-    }
-
-    // 使用微信预览图片API
-    wx.previewImage({
-      current: this.data.userInfo.avatarUrl, // 当前显示图片的链接
-      urls: [this.data.userInfo.avatarUrl], // 需要预览的图片链接列表
-    })
-
-    Logger.info('用户预览头像')
   },
 
   // 修改昵称

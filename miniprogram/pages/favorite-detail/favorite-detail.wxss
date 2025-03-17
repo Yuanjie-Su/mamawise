@@ -35,8 +35,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -151,13 +156,15 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - 250rpx); /* 计算高度：视口高度减去标题和上下边距 */
+  height: calc(100vh - 250rpx);
+  /* 计算高度：视口高度减去标题和上下边距 */
 }
 
 /* 可编辑的内容样式 */
 .content-textarea {
   width: 100%;
-  height: 100%; /* 占满容器高度 */
+  height: 100%;
+  /* 占满容器高度 */
   font-size: 32rpx;
   color: #333;
   line-height: 1.8;
@@ -250,4 +257,32 @@
 
 .document-title-input:focus {
   border-bottom: 1px dashed #E57B9E;
-} 
+}
+
+/* 悬浮保存按钮样式 */
+.floating-save-btn {
+  position: fixed;
+  right: 10rpx;
+  top: 10rpx;
+  /* 位于顶部右侧 */
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background-color: #F5F5F5;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  transition: all 0.3s ease;
+}
+
+.floating-save-btn:active {
+  transform: scale(0.9);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.save-icon {
+  width: 40rpx;
+  height: 40rpx;
+}

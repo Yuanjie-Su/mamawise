@@ -33,25 +33,48 @@ App({
     // 设置全局数据-登录状态
     this.globalData.isLoggedIn = isLoggedIn // 登录状态
 
+    if (!isLoggedIn) {
+      return
+    }
+
     // 未保存消息计数
     let messagesUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER) || 0
+    let isFavoritesChanged = wx.getStorageSync(STORAGE_KEYS.FAVORITES_CHANGED) || false
 
-    if (isLoggedIn && messagesUnsavedNumber > 0) {
+    if (messagesUnsavedNumber > 0) {
       chatService.saveChatHistoryToCloud(messagesUnsavedNumber)
+      Logger.info('登录时聊天记录已保存')
     }
 
-    if (isLoggedIn) {
-      // 已登录从本地存储获取提示词
-      this.globalData.prompt_healthRecords = wx.getStorageSync(STORAGE_KEYS.PROMPT_HEALTH_RECORDS)
-
-      // 监听小程序隐藏事件
-      wx.onAppHide(async () => {
-        messagesUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER)
-        if (this.globalData.isLoggedIn && messagesUnsavedNumber > 0) {
-          chatService.saveChatHistoryToCloud(messagesUnsavedNumber)
-        }
-      })
+    if (isFavoritesChanged) {
+      chatService.saveFavoritesToCloud()
+      Logger.info('登录时收藏列表已保存')
     }
+
+    // 已登录从本地存储获取提示词
+    this.globalData.prompt_healthRecords = wx.getStorageSync(STORAGE_KEYS.PROMPT_HEALTH_RECORDS)
+
+    // 监听小程序隐藏事件
+    wx.onAppHide(async () => {
+      Logger.info('小程序隐藏')
+      if (!this.globalData.isLoggedIn) {
+        return
+      }
+
+      const currentMessagesUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER)
+      Logger.info('小程序隐藏时聊天记录变化', currentMessagesUnsavedNumber)
+      if (currentMessagesUnsavedNumber > 0) {
+        chatService.saveChatHistoryToCloud(currentMessagesUnsavedNumber)
+        Logger.info('小程序隐藏时聊天记录已保存')
+      }
+
+      const currentIsFavoritesChanged = wx.getStorageSync(STORAGE_KEYS.FAVORITES_CHANGED)
+      Logger.info('小程序隐藏时收藏列表变化', currentIsFavoritesChanged)
+      if (currentIsFavoritesChanged) {
+        chatService.saveFavoritesToCloud()
+        Logger.info('小程序隐藏时收藏列表已保存')
+      }
+    })
   },
 
   globalData: {

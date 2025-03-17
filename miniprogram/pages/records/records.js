@@ -4,7 +4,10 @@ import Logger from '../../utils/logger'
 import promptService from '../../services/promptService'
 import appConfig from '../../config/appConfig'
 
-const { DEFAULT_HEALTH_RECORDS } = appConfig
+const {
+  DEFAULT_HEALTH_RECORDS,
+  STORAGE_KEYS
+} = appConfig
 
 // 定义需要提取的属性列表
 const FIELDS = [
@@ -67,8 +70,7 @@ Page({
     },
 
     // 年龄选项 (14-50岁)
-    ageOptions: Array.from(
-      {
+    ageOptions: Array.from({
         length: 36,
       },
       (_, i) => (14 + i).toString()
@@ -76,8 +78,7 @@ Page({
     ageIndex: -1,
 
     // 身高选项 (130cm-200cm)
-    heightOptions: Array.from(
-      {
+    heightOptions: Array.from({
         length: 71,
       },
       (_, i) => (130 + i).toString()
@@ -85,8 +86,7 @@ Page({
     heightIndex: -1,
 
     // 体重选项 (35kg-120kg，步长0.5kg)
-    weightOptions: Array.from(
-      {
+    weightOptions: Array.from({
         length: 171,
       },
       (_, i) => (35 + i * 0.5).toFixed(1)
@@ -100,8 +100,7 @@ Page({
       dueDate: '',
     },
     // 孕周选项
-    pregnancyWeekOptions: Array.from(
-      {
+    pregnancyWeekOptions: Array.from({
         length: 42,
       },
       (_, i) => (i + 1).toString()
@@ -138,8 +137,7 @@ Page({
       time: '',
       notes: '',
     },
-    vitalsTypes: [
-      {
+    vitalsTypes: [{
         name: '血压',
         unit: 'mmHg',
         placeholder: '如：120/80',
@@ -169,8 +167,7 @@ Page({
         name: '体重',
         unit: 'kg',
         placeholder: '如：65.5',
-        valueOptions: Array.from(
-          {
+        valueOptions: Array.from({
             length: 81,
           },
           (_, i) => (40 + i * 0.5).toFixed(1)
@@ -180,8 +177,7 @@ Page({
         name: '血糖',
         unit: 'mmol/L',
         placeholder: '如：5.6',
-        valueOptions: Array.from(
-          {
+        valueOptions: Array.from({
             length: 61,
           },
           (_, i) => (3.0 + i * 0.1).toFixed(1)
@@ -191,8 +187,7 @@ Page({
         name: '体温',
         unit: '°C',
         placeholder: '如：36.5',
-        valueOptions: Array.from(
-          {
+        valueOptions: Array.from({
             length: 21,
           },
           (_, i) => (35.5 + i * 0.1).toFixed(1)
@@ -202,8 +197,7 @@ Page({
         name: '心率',
         unit: '次/分',
         placeholder: '如：75',
-        valueOptions: Array.from(
-          {
+        valueOptions: Array.from({
             length: 81,
           },
           (_, i) => (40 + i).toString()
@@ -213,8 +207,7 @@ Page({
         name: '胎动',
         unit: '次/小时',
         placeholder: '如：10',
-        valueOptions: Array.from(
-          {
+        valueOptions: Array.from({
             length: 31,
           },
           (_, i) => i.toString()
@@ -309,14 +302,8 @@ Page({
       const data = FIELDS.reduce((acc, field) => {
         // 从本地存储读取每个字段
         const value = wx.getStorageSync(field) || DEFAULT_HEALTH_RECORDS[field]
-        // 设置默认值
-        const defaultValue = Array.isArray(DEFAULT_HEALTH_RECORDS[field])
-          ? []
-          : typeof DEFAULT_HEALTH_RECORDS[field] === 'object'
-          ? {}
-          : ''
         // 添加到累加器
-        acc[field] = value || defaultValue
+        acc[field] = value
         return acc
       }, {})
 
@@ -424,7 +411,10 @@ Page({
 
   // 保存孕期信息
   savePregnancyInfo() {
-    const { week, dueDate } = this.data.pregnancyInfoForm
+    const {
+      week,
+      dueDate
+    } = this.data.pregnancyInfoForm
 
     // 验证输入
     if (!week || !dueDate) {
@@ -577,7 +567,11 @@ Page({
   // 保存其他健康信息
   saveOtherInfo() {
     // 获取表单数据
-    const { age, height, weight } = this.data.otherInfoForm
+    const {
+      age,
+      height,
+      weight
+    } = this.data.otherInfoForm
 
     // 更新本地数据
     this.setData({
@@ -1065,7 +1059,13 @@ Page({
 
   // 保存体征记录
   saveVitals() {
-    const { type, value, date, time, notes } = this.data.vitalsForm
+    const {
+      type,
+      value,
+      date,
+      time,
+      notes
+    } = this.data.vitalsForm
 
     // 验证必填字段
     if (!value || !date) {
@@ -1368,8 +1368,17 @@ Page({
 
   // 保存用药记录
   saveMedication() {
-    const { name, typeIndex, dosage, frequency, timeIndex, startDate, endDate, notes } =
-      this.data.medicationForm
+    const {
+      name,
+      typeIndex,
+      dosage,
+      frequency,
+      timeIndex,
+      startDate,
+      endDate,
+      notes
+    } =
+    this.data.medicationForm
 
     // 验证必填字段
     if (!name || !dosage || !frequency) {
@@ -1647,8 +1656,6 @@ Page({
 
     // 如果有预产期信息，使用预产期计算
     if (pregnancyInfo.dueDate) {
-      const dueDate = new Date(pregnancyInfo.dueDate)
-
       // 计算检查日期与今天的差距（天数）
       const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24))
 
@@ -1688,13 +1695,13 @@ Page({
   async updateHealthRecordsAndPrompt(updateType, partialRecords) {
     try {
       const updatedPrompt = promptService.updatePartialRcordsPrompt(
-        app.globalData.DEFAULT_HEALTH_RECORDS,
+        app.globalData.prompt_healthRecords,
         updateType,
         partialRecords
       )
 
       // 更新全局提示词对象中的健康记录部分
-      app.globalData.prompt.healthRecords = updatedPrompt
+      app.globalData.prompt_healthRecords = updatedPrompt
 
       wx.setStorage({
         key: updateType,
@@ -1702,7 +1709,7 @@ Page({
       })
 
       wx.setStorage({
-        key: DEFAULT_HEALTH_RECORDS,
+        key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
         data: updatedPrompt,
       })
 
