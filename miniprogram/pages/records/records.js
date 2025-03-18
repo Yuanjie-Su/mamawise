@@ -4,10 +4,7 @@ import Logger from '../../utils/logger'
 import promptService from '../../services/promptService'
 import appConfig from '../../config/appConfig'
 
-const {
-  DEFAULT_HEALTH_RECORDS,
-  STORAGE_KEYS
-} = appConfig
+const { DEFAULT_HEALTH_RECORDS, STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
 
 // 定义需要提取的属性列表
 const FIELDS = [
@@ -70,7 +67,8 @@ Page({
     },
 
     // 年龄选项 (14-50岁)
-    ageOptions: Array.from({
+    ageOptions: Array.from(
+      {
         length: 36,
       },
       (_, i) => (14 + i).toString()
@@ -78,7 +76,8 @@ Page({
     ageIndex: -1,
 
     // 身高选项 (130cm-200cm)
-    heightOptions: Array.from({
+    heightOptions: Array.from(
+      {
         length: 71,
       },
       (_, i) => (130 + i).toString()
@@ -86,7 +85,8 @@ Page({
     heightIndex: -1,
 
     // 体重选项 (35kg-120kg，步长0.5kg)
-    weightOptions: Array.from({
+    weightOptions: Array.from(
+      {
         length: 171,
       },
       (_, i) => (35 + i * 0.5).toFixed(1)
@@ -100,7 +100,8 @@ Page({
       dueDate: '',
     },
     // 孕周选项
-    pregnancyWeekOptions: Array.from({
+    pregnancyWeekOptions: Array.from(
+      {
         length: 42,
       },
       (_, i) => (i + 1).toString()
@@ -137,7 +138,8 @@ Page({
       time: '',
       notes: '',
     },
-    vitalsTypes: [{
+    vitalsTypes: [
+      {
         name: '血压',
         unit: 'mmHg',
         placeholder: '如：120/80',
@@ -167,7 +169,8 @@ Page({
         name: '体重',
         unit: 'kg',
         placeholder: '如：65.5',
-        valueOptions: Array.from({
+        valueOptions: Array.from(
+          {
             length: 81,
           },
           (_, i) => (40 + i * 0.5).toFixed(1)
@@ -177,7 +180,8 @@ Page({
         name: '血糖',
         unit: 'mmol/L',
         placeholder: '如：5.6',
-        valueOptions: Array.from({
+        valueOptions: Array.from(
+          {
             length: 61,
           },
           (_, i) => (3.0 + i * 0.1).toFixed(1)
@@ -187,7 +191,8 @@ Page({
         name: '体温',
         unit: '°C',
         placeholder: '如：36.5',
-        valueOptions: Array.from({
+        valueOptions: Array.from(
+          {
             length: 21,
           },
           (_, i) => (35.5 + i * 0.1).toFixed(1)
@@ -197,7 +202,8 @@ Page({
         name: '心率',
         unit: '次/分',
         placeholder: '如：75',
-        valueOptions: Array.from({
+        valueOptions: Array.from(
+          {
             length: 81,
           },
           (_, i) => (40 + i).toString()
@@ -207,7 +213,8 @@ Page({
         name: '胎动',
         unit: '次/小时',
         placeholder: '如：10',
-        valueOptions: Array.from({
+        valueOptions: Array.from(
+          {
             length: 31,
           },
           (_, i) => i.toString()
@@ -298,18 +305,10 @@ Page({
   // 从本地加载'基本信息', '体征记录', '用药记录', '产检记录'
   async loadHealthRecords() {
     try {
-      // 使用reduce构建数据对象
-      const data = FIELDS.reduce((acc, field) => {
-        // 从本地存储读取每个字段
-        const value = wx.getStorageSync(field) || DEFAULT_HEALTH_RECORDS[field]
-        // 添加到累加器
-        acc[field] = value
-        return acc
-      }, {})
-
-      // 一次性设置所有数据
-      this.setData(data)
-
+      const healthRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS) || DEFAULT_HEALTH_RECORDS
+      this.setData({
+        ...healthRecords,
+      })
       Logger.info('健康记录加载成功')
     } catch (e) {
       this.setData({
@@ -411,10 +410,7 @@ Page({
 
   // 保存孕期信息
   savePregnancyInfo() {
-    const {
-      week,
-      dueDate
-    } = this.data.pregnancyInfoForm
+    const { week, dueDate } = this.data.pregnancyInfoForm
 
     // 验证输入
     if (!week || !dueDate) {
@@ -567,11 +563,7 @@ Page({
   // 保存其他健康信息
   saveOtherInfo() {
     // 获取表单数据
-    const {
-      age,
-      height,
-      weight
-    } = this.data.otherInfoForm
+    const { age, height, weight } = this.data.otherInfoForm
 
     // 更新本地数据
     this.setData({
@@ -585,11 +577,6 @@ Page({
 
     // 更新提示词
     this.updateHealthRecordsAndPrompt('otherInfo', this.data.otherInfo)
-
-    wx.showToast({
-      title: '信息已保存',
-      icon: 'success',
-    })
   },
 
   // ----- 过敏信息 -----
@@ -627,10 +614,6 @@ Page({
 
     // 检查是否已存在相同的过敏信息
     if (allergyInfo.includes(allergy)) {
-      wx.showToast({
-        title: '该过敏信息已存在',
-        icon: 'none',
-      })
       return
     }
 
@@ -644,11 +627,6 @@ Page({
 
     // 更新 提示词
     this.updateHealthRecordsAndPrompt('allergyInfo', this.data.allergyInfo)
-
-    wx.showToast({
-      title: '过敏信息已添加',
-      icon: 'success',
-    })
   },
 
   // 保存过敏信息
@@ -703,11 +681,6 @@ Page({
 
     // 更新提示词
     this.updateHealthRecordsAndPrompt('allergyInfo', this.data.allergyInfo)
-
-    wx.showToast({
-      title: '已删除',
-      icon: 'success',
-    })
   },
 
   // ----- 饮食偏好 -----
@@ -745,10 +718,6 @@ Page({
 
     // 检查是否已存在相同的饮食偏好
     if (dietPreference.includes(preference)) {
-      wx.showToast({
-        title: '该饮食偏好已存在',
-        icon: 'none',
-      })
       return
     }
 
@@ -762,11 +731,6 @@ Page({
 
     // 更新提示词
     this.updateHealthRecordsAndPrompt('dietPreference', this.data.dietPreference)
-
-    wx.showToast({
-      title: '饮食偏好已添加',
-      icon: 'success',
-    })
   },
 
   // 保存饮食偏好
@@ -821,11 +785,6 @@ Page({
 
     // 更新提示词
     this.updateHealthRecordsAndPrompt('dietPreference', this.data.dietPreference)
-
-    wx.showToast({
-      title: '已删除',
-      icon: 'success',
-    })
   },
 
   // =============================================
@@ -1059,13 +1018,7 @@ Page({
 
   // 保存体征记录
   saveVitals() {
-    const {
-      type,
-      value,
-      date,
-      time,
-      notes
-    } = this.data.vitalsForm
+    const { type, value, date, time, notes } = this.data.vitalsForm
 
     // 验证必填字段
     if (!value || !date) {
@@ -1102,13 +1055,8 @@ Page({
       showVitalsForm: false,
     })
 
-    // 更新提示词
+    // 更新健康记录和提示词
     this.updateHealthRecordsAndPrompt(this.data.editingVitalsType, this.data[recordsKey])
-
-    wx.showToast({
-      title: '体征记录已保存',
-      icon: 'success',
-    })
   },
 
   // 删除体征记录
@@ -1133,13 +1081,8 @@ Page({
             [recordsKey]: records,
           })
 
-          // 更新提示词
+          // 更新健康记录和提示词
           this.updateHealthRecordsAndPrompt(type, this.data[recordsKey])
-
-          wx.showToast({
-            title: '体征记录已删除',
-            icon: 'success',
-          })
         }
       },
     })
@@ -1368,17 +1311,8 @@ Page({
 
   // 保存用药记录
   saveMedication() {
-    const {
-      name,
-      typeIndex,
-      dosage,
-      frequency,
-      timeIndex,
-      startDate,
-      endDate,
-      notes
-    } =
-    this.data.medicationForm
+    const { name, typeIndex, dosage, frequency, timeIndex, startDate, endDate, notes } =
+      this.data.medicationForm
 
     // 验证必填字段
     if (!name || !dosage || !frequency) {
@@ -1412,13 +1346,12 @@ Page({
       medications.push(newMedication)
     }
 
-    // 更新本地数据
     this.setData({
       medications,
       showMedicationForm: false,
     })
 
-    // 更新提示词
+    // 更新健康记录和提示词
     this.updateHealthRecordsAndPrompt('medications', this.data.medications)
   },
 
@@ -1437,24 +1370,12 @@ Page({
           // 删除指定记录
           medications.splice(index, 1)
 
-          // 更新本地数据
           this.setData({
             medications,
           })
 
-          // 获取当前健康记录
-          const healthRecords = wx.getStorageSync('healthRecords') || {}
-
-          // 更新用药记录
-          healthRecords.medications = medications
-
-          // 保存到本地存储
-          wx.setStorageSync('healthRecords', healthRecords)
-
-          wx.showToast({
-            title: '用药已删除',
-            icon: 'success',
-          })
+          // 更新健康记录和提示词
+          this.updateHealthRecordsAndPrompt('medications', this.data.medications)
         }
       },
     })
@@ -1695,25 +1616,47 @@ Page({
   async updateHealthRecordsAndPrompt(updateType, partialRecords) {
     try {
       const updatedPrompt = promptService.updatePartialRcordsPrompt(
-        app.globalData.prompt_healthRecords,
+        app.globalData.healthRecordsPrompt,
         updateType,
         partialRecords
       )
 
       // 更新全局提示词对象中的健康记录部分
-      app.globalData.prompt_healthRecords = updatedPrompt
+      app.globalData.healthRecordsPrompt = updatedPrompt
 
       wx.setStorage({
-        key: updateType,
-        data: partialRecords,
-      })
-
-      wx.setStorage({
-        key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
+        key: STORAGE_KEYS.HEALTH_RECORDS_PROMPT,
         data: updatedPrompt,
+      }).then(() => {
+        wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, true)
+        Logger.info('提示词缓存已更新')
       })
 
-      Logger.info('提示词已更新', updatedPrompt)
+      // 更新本地健康记录
+      const healthRecords = FIELDS.reduce((acc, field) => {
+        acc[field] = this.data[field]
+        return acc
+      }, {})
+
+      wx.setStorage({
+        key: STORAGE_KEYS.HEALTH_RECORDS,
+        data: healthRecords,
+      }).then(() => {
+        Logger.info('健康记录缓存已更新')
+      })
+
+      // 更新云数据库
+      wx.cloud
+        .callFunction({
+          name: CLOUD_FUNCTIONS.UPDATE_HEALTH_RECORDS,
+          data: {
+            updateType,
+            partialRecords,
+          },
+        })
+        .then(() => {
+          Logger.info('健康记录云端同步已更新')
+        })
     } catch (e) {
       Logger.error('更新健康记录和提示词失败:', e)
     }

@@ -44,7 +44,10 @@ async function handleUserOperation(openid, userInfo) {
           return db
             .collection('users')
             .add({
-              data: { _openid: openid, ...userInfo },
+              data: {
+                _openid: openid,
+                ...userInfo,
+              },
             })
             .then(res => {
               return userInfo
@@ -61,10 +64,12 @@ async function handleUserOperation(openid, userInfo) {
         return result
       }),
 
-    // 聊天记录表操作（初始化空数组）
+    // 聊天记录表操作
     db
       .collection('chat_history')
-      .where({ _openid: openid })
+      .where({
+        _openid: openid,
+      })
       .get()
       .then(res => {
         if (res.data.length === 0) {
@@ -85,7 +90,9 @@ async function handleUserOperation(openid, userInfo) {
     // 提示词表操作
     db
       .collection('prompts')
-      .where({ _openid: openid })
+      .where({
+        _openid: openid,
+      })
       .get()
       .then(res => {
         if (res.data.length === 0) {
@@ -112,7 +119,7 @@ async function handleUserOperation(openid, userInfo) {
         } else {
           // 返回除openid、id外的数据
           return Object.fromEntries(
-            Object.entries(res.data).filter(([key]) => key !== '_openid' && key !== 'id')
+            Object.entries(res.data[0]).filter(([key]) => key !== '_openid' && key !== '_id')
           )
         }
       })
@@ -122,18 +129,20 @@ async function handleUserOperation(openid, userInfo) {
 
     // 收藏夹表操作
     db
-      .collection('favorites')
-      .where({ _openid: openid })
+      .collection('notes')
+      .where({
+        _openid: openid,
+      })
       .get()
       .then(res => {
         if (res.data.length === 0) {
           return null
         } else {
-          const favorites = res.data[0].favorites
-          if (favorites.length > 50) {
-            return favorites.slice(-50)
+          const lists = res.data[0].lists
+          if (lists.length > 50) {
+            return lists.slice(-50)
           } else {
-            return favorites
+            return lists
           }
         }
       })
@@ -148,7 +157,7 @@ async function handleUserOperation(openid, userInfo) {
         chatHistory: results[1],
         healthRecordsPrompt: results[2],
         healthRecords: results[3],
-        favorites: results[4],
+        notes: results[4],
       })
     })
     .catch(err => {

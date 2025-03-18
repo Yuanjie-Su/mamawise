@@ -3,7 +3,7 @@
   <!-- 未登录或未完善个人信息时的提示 -->
   <view class="auth-tip-container" wx:if="{{!isLoggedIn}}">
     <view class="auth-tip">
-      <image class="auth-tip-icon" src="/images/profile.png"></image>
+      <image class="auth-tip-icon" src="/images/icons/profile.png"></image>
       <view class="auth-tip-text">
         <text wx:if="{{!isLoggedIn}}">请先登录后查看健康档案</text>
       </view>
@@ -489,6 +489,16 @@
         <view class="close-btn" bindtap="hideAllergyForm">×</view>
       </view>
       <view class="form-content allergy-form-content">
+          <!-- 显示已添加的过敏信息 -->
+          <view class="allergy-list" wx:if="{{allergyInfo && allergyInfo.length > 0}}">
+            <view class="allergy-item" wx:for="{{allergyInfo}}" wx:key="index">
+              {{item}}
+              <view class="allergy-delete-btn" catchtap="deleteAllergy" data-index="{{index}}">
+                <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
+              </view>
+            </view>
+          </view>
+          
           <input class="form-input" placeholder="请输入过敏信息，如：海鲜、花粉等" value="{{allergyForm.allergy}}" bindinput="onAllergyInputChange" />
           
           <view class="quick-select-title">示例</view>
@@ -523,6 +533,16 @@
         <view class="close-btn" bindtap="hideDietPreferenceForm">×</view>
       </view>
       <view class="form-content allergy-form-content">
+          <!-- 显示已添加的饮食偏好 -->
+          <view class="allergy-list" wx:if="{{dietPreference && dietPreference.length > 0}}">
+            <view class="allergy-item" wx:for="{{dietPreference}}" wx:key="index">
+              {{item}}
+              <view class="allergy-delete-btn" catchtap="deleteDietPreference" data-index="{{index}}">
+                <image class="delete-icon" src="/images/icons/delete.png" mode="aspectFit"></image>
+              </view>
+            </view>
+          </view>
+          
           <input class="form-input" placeholder="请输入饮食偏好，如：素食、低糖等" value="{{dietPreferenceForm.preference}}" bindinput="onDietPreferenceInputChange" />
           
           <view class="quick-select-title">示例</view>

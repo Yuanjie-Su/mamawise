@@ -1,6 +1,7 @@
 const app = getApp()
 import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
+import promptService from '../../services/promptService'
 import aiService from '../../services/aiService'
 import chatService from '../../services/chatService'
 import markdownUtil from '../../utils/markdownUtil'
@@ -31,6 +32,8 @@ Page({
     showModelSelector: false,
     // 可用的模型类型列表
     modelOptions: MODEL_OPTIONS,
+    // 回复风格
+    replyStyle: 'default',
     // 分享内容
     shareContent: '',
     // 当前分享的消息索引
@@ -39,9 +42,22 @@ Page({
     tempImagePath: '',
     // 是否已终止回复生成
     isGeneratingStopped: false,
+    // 是否显示消息操作菜单
+    showMessageActionMenu: false,
+    // 当前选中的消息ID
+    selectedMessageId: null,
+    // 当前选中的消息类型
+    selectedMessageType: null,
+    // 当前选中的消息内容
+    selectedMessageContent: '',
+    // 当前选中的消息索引
+    selectedMessageIndex: null,
+    // 菜单位置
+    menuPosition: 0,
   },
 
   async onLoad() {
+    // 初始化
     this.loadData()
   },
 
@@ -133,16 +149,20 @@ Page({
         loadingMessageId: newMessage.id,
       })
 
+      // 生成提示词
+      const prompt =
+        promptService.getPrompt(this.data.replyStyle) +
+        '\n\n用户健康记录：\n' +
+        app.globalData.healthRecordsPrompt
       // 调用AI服务生成回复
       await aiService.generateAIResponse(
-        this.data.messages, // 使用当前所有消息
+        this.data.messages.slice(-2), // 使用最后2条消息
         userQuery,
-        app.globalData.prompt_healthRecords,
+        prompt,
         this.data.currentModelName,
         text => {
           // 如果用户已经终止了回复生成，则不再更新消息
           if (this.data.isGeneratingStopped) {
-            // 如果用户已经终止了回复生成，则不再更新消息
             return
           }
 
@@ -156,7 +176,10 @@ Page({
 
       // 在最近的一条消息后面添加一条AI回复错误的消息
       const errorContent = '抱歉，生成回复时出现了错误，请稍后再试。'
-      const newMessage = chatService.createSystemMessage(errorContent, this.data.messages.length)
+      const newMessage = chatService.createSystemMessage(
+        errorContent,
+        this.data.messages.length + 1
+      )
       this.setData({
         messages: [...this.data.messages, newMessage],
       })
@@ -169,10 +192,29 @@ Page({
     const [lastMessage] = messages.slice(-1)
 
     if (lastMessage) {
-      // 直接修改消息内容
+      // 更新原始markdown内容
+      const updatedMarkdownContent = lastMessage.markdownContent
+        ? lastMessage.markdownContent + text
+        : text
+
+      // 判断是否包含markdown，并处理内容
+      const containsMarkdown = markdownUtil.containsMarkdown(updatedMarkdownContent)
+
+      // 设置无markdown的纯文本内容
+      const plainContent = containsMarkdown
+        ? markdownUtil.stripMarkdown(updatedMarkdownContent)
+        : updatedMarkdownContent
+
+      // 生成格式化的HTML内容
+      const formattedHtml = containsMarkdown
+        ? markdownUtil.formatMarkdownExcludingLastLine(updatedMarkdownContent)
+        : updatedMarkdownContent
+
       const newMessage = {
         ...lastMessage,
-        content: lastMessage.content + text,
+        content: plainContent, // content存储纯文本内容
+        markdownContent: updatedMarkdownContent, // 保存原始markdown内容
+        formattedContent: formattedHtml, // 保存格式化的HTML
       }
 
       this.setData({
@@ -188,13 +230,13 @@ Page({
       content: '确定要清空所有聊天记录吗？',
       success: res => {
         if (res.confirm) {
-          wx.removeStorage({
-            key: STORAGE_KEYS.CHAT_HISTORY,
-          })
+          wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, [])
           this.setData({
             messages: [],
             recommendedQuestions: aiService.getDefaultRecommendedQuestions(),
           })
+          wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY_UNSAVED_COUNTER, 0)
+          chatService.clearChatHistoryOnCloud()
         }
       },
     })
@@ -346,24 +388,15 @@ Page({
     const index = e.currentTarget.dataset.index
     const messageId = e.currentTarget.dataset.id
 
-    // 检查内容是否包含Markdown语法
-    const containsMarkdown = markdownUtil.containsMarkdown(content)
-
-    // 如果包含Markdown语法，先格式化为纯文本
-    const shareContent = containsMarkdown ? markdownUtil.stripMarkdown(content) : content
-
     // 显示分享选项
     wx.showActionSheet({
-      itemList: ['收藏内容', '分享文本', '分享图片', '保存到相册'],
+      itemList: ['分享', '添加笔记', '保存到相册'],
       success: res => {
         switch (res.tapIndex) {
-          case 0: // 收藏内容
-            this.toggleFavorite(content, messageId)
-            break
-          case 1: // 分享文本
+          case 0: // 分享
             // 设置分享内容
             this.setData({
-              shareContent: shareContent,
+              shareContent: content,
             })
 
             // 触发分享
@@ -372,20 +405,10 @@ Page({
               menus: ['shareAppMessage'],
             })
             break
-          case 2: // 分享图片
-            // 保存当前要分享的消息索引
-            this.setData({
-              currentShareMessageIndex: index,
-            })
-
-            // 生成分享图片
-            this.generateShareImage().then(tempFilePath => {
-              if (tempFilePath) {
-                this.shareImageToFriend(tempFilePath)
-              }
-            })
+          case 1: // 添加笔记
+            this.addNoteWithContent(content, messageId)
             break
-          case 3: // 保存到相册
+          case 2: // 保存到相册
             // 保存当前要分享的消息索引
             this.setData({
               currentShareMessageIndex: index,
@@ -405,7 +428,7 @@ Page({
 
   // 从内容中提取标题和正文
   extractTitleAndContent(content) {
-    let title = '收藏内容'
+    let title = '笔记内容'
     let contentProcessed = content
 
     if (content.includes('---')) {
@@ -425,13 +448,22 @@ Page({
     return { title, content: contentProcessed }
   },
 
-  // 收藏消息
-  async toggleFavorite(content, messageId) {
+  // 添加笔记（直接点击按钮）
+  addNote(e) {
+    const content = e.currentTarget.dataset.content
+    const messageId = e.currentTarget.dataset.id
+
+    // 调用已有的添加笔记逻辑
+    this.addNoteWithContent(content, messageId)
+  },
+
+  // 原始添加笔记逻辑
+  async addNoteWithContent(content, messageId) {
     // 检查登录状态
     if (!this.data.isLoggedIn) {
       wx.showModal({
         title: '提示',
-        content: '请先登录，才能收藏内容',
+        content: '请先登录，才能添加笔记',
         confirmText: '去登录',
         cancelText: '取消',
         success: res => {
@@ -447,48 +479,51 @@ Page({
     }
 
     try {
-      // 准备收藏数据
-      const now = new Date()
+      Logger.info('添加笔记：', content)
+
+      // 准备笔记数据
       const { title, content: contentProcessed } = this.extractTitleAndContent(content)
-      const newFavorite = {
+      const now = new Date()
+      const newNote = {
         id: Date.now().toString(),
         title,
         content: contentProcessed,
         date: this.formatDate(now),
+        timestamp: now.getTime(),
       }
 
       const res = await wx.getStorage({
-        key: STORAGE_KEYS.FAVORITES,
+        key: STORAGE_KEYS.NOTES,
       })
-      const favorites = res.data || []
+      const notes = res.data || []
 
-      // 添加到收藏列表
-      favorites.push(newFavorite)
+      // 添加到笔记列表
+      notes.push(newNote)
 
       // 保存到本地存储
       wx.setStorage({
-        key: STORAGE_KEYS.FAVORITES,
-        data: favorites,
+        key: STORAGE_KEYS.NOTES,
+        data: notes,
         success: () => {
           wx.showToast({
-            title: '收藏成功',
+            title: '添加笔记成功',
             icon: 'success',
           })
-          // 更新本地缓存中收藏列表发生变化
-          wx.setStorageSync(STORAGE_KEYS.FAVORITES_CHANGED, true)
+          // 更新本地缓存中笔记列表发生变化
+          wx.setStorageSync(STORAGE_KEYS.NOTES_CHANGED, true)
         },
         fail: err => {
-          Logger.error('收藏失败', err)
+          Logger.error('添加笔记失败', err)
           wx.showToast({
-            title: '收藏失败',
+            title: '添加笔记失败',
             icon: 'none',
           })
         },
       })
     } catch (error) {
-      Logger.error('收藏失败', error)
+      Logger.error('添加笔记失败', error)
       wx.showToast({
-        title: '收藏失败',
+        title: '添加笔记失败',
         icon: 'none',
       })
     }
@@ -525,70 +560,92 @@ Page({
         mask: true,
       })
 
-      // 获取系统信息
-      wx.getSystemInfo({
-        success: sysInfo => {
-          // 创建画布上下文
-          const ctx = wx.createCanvasContext('shareCanvas')
-          const canvasWidth = sysInfo.windowWidth * 0.8 // 画布宽度为屏幕宽度的80%
-          const padding = 30 // 内边距
-          const lineHeight = 40 // 行高
-          const maxTextWidth = canvasWidth - padding * 2 // 文本最大宽度
+      try {
+        // 使用新API获取窗口信息
+        const windowInfo = wx.getWindowInfo()
 
-          // 计算文本高度
-          const textHeight = this.calculateTextHeight(
-            ctx,
-            message.content,
-            maxTextWidth,
-            lineHeight
-          )
-          const canvasHeight = textHeight + padding * 2 + 120 // 额外的120是为了标题和底部
+        // 提取标题和内容
+        const { title, content: contentProcessed } = this.extractTitleAndContent(message.content)
 
-          // 设置画布高度
-          this.setData({
-            canvasHeight: canvasHeight,
-          })
+        // 获取Canvas 2D上下文
+        const query = wx.createSelectorQuery()
+        query
+          .select('#shareCanvas')
+          .fields({ node: true, size: true })
+          .exec(res => {
+            if (!res || !res[0] || !res[0].node) {
+              wx.hideLoading()
+              reject(new Error('无法获取Canvas节点'))
+              return
+            }
 
-          // 绘制背景
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+            const canvas = res[0].node
+            const ctx = canvas.getContext('2d')
 
-          // 绘制标题
-          ctx.fillStyle = '#333333'
-          ctx.font = 'bold 18px sans-serif'
-          ctx.fillText('妈妈智慧', padding, padding + 20)
+            // 设置画布大小
+            const screenWidth = windowInfo.windowWidth
+            const canvasWidth = screenWidth * 0.9 // 画布宽度为屏幕宽度的90%
+            const padding = 30 // 内边距
+            const lineHeight = 40 // 行高
+            const maxTextWidth = canvasWidth - padding * 2 // 文本最大宽度
+            const titleHeight = 60 // 标题区域高度
 
-          // 绘制日期
-          const date = new Date()
-          const dateStr = this.formatDate(date)
-          ctx.fillStyle = '#999999'
-          ctx.font = '14px sans-serif'
-          ctx.fillText(dateStr, padding, padding + 50)
+            // 计算文本高度
+            const textHeight = this.calculateTextHeight2d(
+              ctx,
+              contentProcessed,
+              maxTextWidth,
+              lineHeight
+            )
 
-          // 绘制分割线
-          ctx.strokeStyle = '#EEEEEE'
-          ctx.lineWidth = 1
-          ctx.beginPath()
-          ctx.moveTo(padding, padding + 70)
-          ctx.lineTo(canvasWidth - padding, padding + 70)
-          ctx.stroke()
+            // 计算总画布高度 - 只有标题和正文
+            const canvasHeight = textHeight + padding * 3 + titleHeight
 
-          // 绘制内容
-          ctx.fillStyle = '#333333'
-          ctx.font = '16px sans-serif'
-          this.wrapText(ctx, message.content, padding, padding + 100, maxTextWidth, lineHeight)
+            // 设置画布尺寸（物理像素）
+            const dpr = wx.getSystemInfoSync().pixelRatio
+            canvas.width = canvasWidth * dpr
+            canvas.height = canvasHeight * dpr
 
-          // 绘制底部
-          ctx.fillStyle = '#999999'
-          ctx.font = '14px sans-serif'
-          ctx.fillText('来自妈妈智慧小程序', padding, canvasHeight - padding)
+            // 缩放所有绘制操作，以适应高DPI屏幕
+            ctx.scale(dpr, dpr)
 
-          // 渲染画布
-          ctx.draw(true, () => {
-            setTimeout(() => {
-              // 将画布内容保存为图片
-              wx.canvasToTempFilePath({
-                canvasId: 'shareCanvas',
+            // 更新组件内的画布高度变量
+            this.setData({
+              canvasHeight: canvasHeight,
+            })
+
+            // 绘制背景
+            ctx.fillStyle = '#FFFFFF'
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+            // 计算居中X坐标
+            const centerX = canvasWidth / 2
+
+            // 绘制标题
+            ctx.fillStyle = '#333333'
+            ctx.font = 'bold 20px sans-serif'
+            ctx.textAlign = 'center' // 标题居中显示
+
+            // 居中绘制标题
+            ctx.fillText(title, centerX, padding + 30)
+
+            // 绘制内容 - 使用处理后的内容，左对齐显示
+            ctx.fillStyle = '#333333'
+            ctx.font = '16px sans-serif'
+            ctx.textAlign = 'left' // 确保文本左对齐
+            this.wrapText2d(
+              ctx,
+              contentProcessed,
+              padding,
+              padding + titleHeight,
+              maxTextWidth,
+              lineHeight
+            )
+
+            // 将画布内容转为图片
+            wx.canvasToTempFilePath(
+              {
+                canvas: canvas,
                 success: res => {
                   wx.hideLoading()
                   this.setData({
@@ -605,16 +662,15 @@ Page({
                   })
                   reject(err)
                 },
-              })
-            }, 200) // 延迟200ms确保画布已完成渲染
+              },
+              this
+            )
           })
-        },
-        fail: err => {
-          wx.hideLoading()
-          Logger.error('获取系统信息失败', err)
-          reject(err)
-        },
-      })
+      } catch (err) {
+        wx.hideLoading()
+        Logger.error('获取窗口信息失败', err)
+        reject(err)
+      }
     })
   },
 
@@ -679,32 +735,38 @@ Page({
     return `${year}-${month}-${day} ${hours}:${minutes}`
   },
 
-  // 计算文本高度
-  calculateTextHeight(ctx, text, maxWidth, lineHeight) {
+  // 计算文本高度 (Canvas 2D版本)
+  calculateTextHeight2d(ctx, text, maxWidth, lineHeight) {
+    // 如果文本为空，返回一行的高度
+    if (!text || text.trim() === '') {
+      return lineHeight
+    }
+
     // 先按换行符分割文本
     const paragraphs = text.split('\n')
     let totalHeight = 0
 
     // 处理每个段落
     for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i]
+      const paragraph = paragraphs[i].trim()
       if (paragraph.length === 0) {
-        // 空行也占一行高度
-        totalHeight += lineHeight
+        // 空行高度减小
+        totalHeight += lineHeight * 0.1
         continue
       }
 
-      const words = paragraph.split('')
       let line = ''
       let lineCount = 1 // 每个段落至少有一行
 
-      for (let j = 0; j < words.length; j++) {
-        const testLine = line + words[j]
+      // 按单个字符分割，确保中文字符也能正确处理
+      for (let j = 0; j < paragraph.length; j++) {
+        const char = paragraph.charAt(j)
+        const testLine = line + char
         const metrics = ctx.measureText(testLine)
         const testWidth = metrics.width
 
         if (testWidth > maxWidth && j > 0) {
-          line = words[j]
+          line = char
           lineCount++
         } else {
           line = testLine
@@ -712,46 +774,276 @@ Page({
       }
 
       totalHeight += lineCount * lineHeight
+
+      // 段落之间的间距
+      if (i < paragraphs.length - 1) {
+        totalHeight += lineHeight * 0.1
+      }
     }
 
-    return totalHeight
+    // 确保文本有足够的底部间距
+    return totalHeight + lineHeight * 0.3
   },
 
-  // 处理文本换行
-  wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  // 处理文本换行和居中显示 (Canvas 2D版本)
+  wrapText2d(ctx, text, x, y, maxWidth, lineHeight) {
+    // 如果文本为空，不做任何处理
+    if (!text || text.trim() === '') {
+      return
+    }
+
     // 先按换行符分割文本
     const paragraphs = text.split('\n')
     let currentY = y
 
     // 处理每个段落
     for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i]
+      const paragraph = paragraphs[i].trim()
       if (paragraph.length === 0) {
-        // 空行也占一行高度
-        currentY += lineHeight
+        // 空行高度减小
+        currentY += lineHeight * 0.1
         continue
       }
 
-      const words = paragraph.split('')
       let line = ''
+      let lineStartX = x
+      let lines = []
 
-      for (let j = 0; j < words.length; j++) {
-        const testLine = line + words[j]
+      // 收集所有的行
+      for (let j = 0; j < paragraph.length; j++) {
+        const char = paragraph.charAt(j)
+        const testLine = line + char
         const metrics = ctx.measureText(testLine)
         const testWidth = metrics.width
 
         if (testWidth > maxWidth && j > 0) {
-          ctx.fillText(line, x, currentY)
-          line = words[j]
-          currentY += lineHeight
+          // 收集这一行
+          lines.push(line)
+          line = char
         } else {
           line = testLine
         }
       }
 
-      // 绘制段落的最后一行
-      ctx.fillText(line, x, currentY)
-      currentY += lineHeight // 段落之间增加一行间距
+      // 添加最后一行
+      if (line.length > 0) {
+        lines.push(line)
+      }
+
+      // 绘制段落的所有行，不再居中显示
+      for (let j = 0; j < lines.length; j++) {
+        const lineText = lines[j]
+
+        // 所有行都从x开始（左对齐）
+        ctx.fillText(lineText, x, currentY)
+        currentY += lineHeight
+      }
+
+      // 段落之间增加一行间距
+      if (i < paragraphs.length - 1) {
+        currentY += lineHeight * 0.1 // 减小段落间间距，避免过大
+      }
     }
+  },
+
+  // 长按消息处理
+  onMessageLongPress(e) {
+    // 加载中时不显示菜单
+    if (this.data.isLoading) return
+
+    const messageId = e.currentTarget.dataset.id
+    const messageType = e.currentTarget.dataset.type
+
+    // 获取点击位置坐标
+    const touchY = e.changedTouches[0].clientY
+
+    try {
+      // 使用新API获取窗口信息
+      const windowInfo = wx.getWindowInfo()
+      const windowHeight = windowInfo.windowHeight
+
+      // 查找消息
+      const messageIndex = this.data.messages.findIndex(msg => msg.id === messageId)
+      if (messageIndex === -1) return
+
+      const message = this.data.messages[messageIndex]
+
+      this.setData({
+        showMessageActionMenu: true,
+        selectedMessageId: messageId,
+        selectedMessageType: messageType,
+        selectedMessageContent: message.content,
+        selectedMessageIndex: messageIndex,
+        menuPosition: touchY,
+      })
+    } catch (err) {
+      Logger.error('获取窗口信息失败', err)
+    }
+  },
+
+  // 隐藏消息操作菜单
+  hideMessageActionMenu() {
+    this.setData({
+      showMessageActionMenu: false,
+    })
+  },
+
+  // 复制全文
+  copyFullText() {
+    wx.setClipboardData({
+      data: this.data.selectedMessageContent,
+      success: () => {
+        wx.showToast({
+          title: '复制成功',
+          icon: 'success',
+          duration: 1500,
+        })
+        this.hideMessageActionMenu()
+      },
+      fail: err => {
+        Logger.error('复制消息失败', err)
+        wx.showToast({
+          title: '复制失败',
+          icon: 'none',
+          duration: 1500,
+        })
+      },
+    })
+  },
+
+  // 保存消息为图片
+  saveMessageImage() {
+    // 设置要分享的消息索引
+    this.setData({
+      currentShareMessageIndex: this.data.selectedMessageIndex,
+    })
+
+    // 生成并保存图片
+    this.generateShareImage()
+      .then(tempFilePath => {
+        if (tempFilePath) {
+          this.saveImageToAlbum(tempFilePath)
+          this.hideMessageActionMenu()
+        }
+      })
+      .catch(err => {
+        Logger.error('生成或保存图片失败', err)
+        wx.showToast({
+          title: '保存失败',
+          icon: 'none',
+          duration: 1500,
+        })
+        this.hideMessageActionMenu()
+      })
+  },
+
+  // 为选中的消息添加笔记
+  addNoteForSelectedMessage() {
+    this.addNoteWithContent(this.data.selectedMessageContent, this.data.selectedMessageId)
+    this.hideMessageActionMenu()
+  },
+
+  // 分享选中的消息
+  shareSelectedMessage() {
+    // 设置分享内容
+    this.setData({
+      shareContent: this.data.selectedMessageContent,
+      currentShareMessageIndex: this.data.selectedMessageIndex,
+    })
+
+    // 触发分享
+    wx.showShareMenu({
+      withShareTicket: true,
+      menus: ['shareAppMessage'],
+    })
+
+    this.hideMessageActionMenu()
+  },
+
+  // 删除选中的消息
+  deleteSelectedMessage() {
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除这条消息吗？',
+      success: res => {
+        if (res.confirm) {
+          this.deleteMessage(this.data.selectedMessageId)
+          this.hideMessageActionMenu()
+        }
+      },
+    })
+  },
+
+  // 删除单条消息
+  async deleteMessage(messageId) {
+    // 找到并删除消息
+    const updatedMessages = this.data.messages.filter(message => message.id !== messageId)
+
+    // 更新本地状态
+    this.setData({
+      messages: updatedMessages,
+    })
+
+    // 更新本地存储
+    wx.setStorage({
+      key: STORAGE_KEYS.CHAT_HISTORY,
+      data: updatedMessages,
+      success: async () => {
+        Logger.info('删除消息本地缓存成功', messageId)
+        // 删除云数据库中的消息
+        chatService.deleteChatHistoryOnCloud(messageId)
+      },
+      fail: err => {
+        Logger.error('删除消息失败', err)
+      },
+    })
+  },
+
+  // 保存到图片（直接点击按钮）
+  saveToImage(e) {
+    const index = e.currentTarget.dataset.index
+
+    // 设置当前要分享的消息索引
+    this.setData({
+      currentShareMessageIndex: index,
+    })
+
+    // 显示加载提示
+    wx.showLoading({
+      title: '正在保存...',
+      mask: true,
+    })
+
+    // 生成并保存图片
+    this.generateShareImage()
+      .then(tempFilePath => {
+        if (tempFilePath) {
+          this.saveImageToAlbum(tempFilePath)
+        }
+        wx.hideLoading()
+      })
+      .catch(err => {
+        wx.hideLoading()
+        Logger.error('保存图片失败', err)
+        wx.showToast({
+          title: '保存失败',
+          icon: 'none',
+          duration: 1500,
+        })
+      })
+  },
+
+  // 长按消息项
+  messageItemLongTap(e) {
+    const { content, messageId, index, type } = e.currentTarget.dataset
+
+    // 保存选中的消息信息
+    this.setData({
+      selectedMessageContent: content,
+      selectedMessageId: messageId,
+      selectedMessageIndex: index,
+      selectedMessageType: type,
+      showMessageActionMenu: true,
+    })
   },
 })

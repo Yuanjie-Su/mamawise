@@ -29,7 +29,7 @@ function createSystemMessage(id, content) {
     id,
     type: 'system',
     content,
-    isFavorite: false,
+    isNote: false,
     timestamp: Date.now(),
   }
 }

@@ -911,6 +911,13 @@
   padding: 10rpx 30rpx 20rpx;
 }
 
+/* 表单中的过敏信息和饮食偏好列表样式 */
+.allergy-form-content .allergy-list {
+  margin: 15rpx 0 25rpx;
+  max-height: 200rpx;
+  overflow-y: auto;
+}
+
 .allergy-form-footer {
   justify-content: flex-end;
   padding: 20rpx 30rpx;

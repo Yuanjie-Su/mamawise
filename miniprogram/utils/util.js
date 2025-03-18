@@ -9,20 +9,20 @@
  * @returns {String} 格式化后的日期字符串
  */
 function formatDate(date, format = 'YYYY-MM-DD') {
-  if (!date) return '';
-  
+  if (!date) return ''
+
   // 如果传入的是字符串，则转换为日期对象
   if (typeof date === 'string') {
-    date = new Date(date.replace(/-/g, '/'));
+    date = new Date(date.replace(/-/g, '/'))
   }
-  
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hour = date.getHours();
-  const minute = date.getMinutes();
-  const second = date.getSeconds();
-  
+
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hour = date.getHours()
+  const minute = date.getMinutes()
+  const second = date.getSeconds()
+
   // 替换格式模板中的占位符
   return format
     .replace('YYYY', year)
@@ -30,7 +30,7 @@ function formatDate(date, format = 'YYYY-MM-DD') {
     .replace('DD', day < 10 ? '0' + day : day)
     .replace('HH', hour < 10 ? '0' + hour : hour)
     .replace('mm', minute < 10 ? '0' + minute : minute)
-    .replace('ss', second < 10 ? '0' + second : second);
+    .replace('ss', second < 10 ? '0' + second : second)
 }
 
 /**
@@ -39,11 +39,8 @@ function formatDate(date, format = 'YYYY-MM-DD') {
  * @returns {String} 当前日期的格式化字符串
  */
 function getCurrentDate(format = 'YYYY-MM-DD') {
-  return formatDate(new Date(), format);
+  return formatDate(new Date(), format)
 }
 
 // 导出函数
-export {
-  formatDate,
-  getCurrentDate
-}; 
+export { formatDate, getCurrentDate }

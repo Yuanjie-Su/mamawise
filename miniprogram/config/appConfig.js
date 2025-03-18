@@ -11,11 +11,12 @@ const STORAGE_KEYS = {
   IS_LOGGED_IN: 'isLoggedIn', // 登录状态
   CURRENT_MODEL: 'currentModel', // 当前模型
   CHAT_HISTORY: 'chatHistory', // 聊天历史
-  PROMPT_HEALTH_RECORDS: 'prompt_healthRecords', // 健康记录提示词
+  HEALTH_RECORDS_PROMPT: 'healthRecordsPrompt', // 健康记录提示词
   HEALTH_RECORDS: 'healthRecords', // 健康记录
-  FAVORITES: 'favorites', // 收藏
-  UNSAVED_COUNTER: 'unsavedCounter', // 未保存消息计数器
-  FAVORITES_CHANGED: 'favoritesChanged', // 收藏列表是否发生变化
+  NOTES: 'notes', // 笔记
+  CHAT_HISTORY_UNSAVED_COUNTER: 'chatHistoryUnsavedCounter', // 未保存聊天记录计数器
+  NOTES_CHANGED: 'notesChanged', // 笔记列表是否发生变化
+  HEALTH_RECORDS_PROMPT_CHANGED: 'healthRecordsPromptChanged', // 健康记录提示词是否发生变化
 }
 
 // API配置
@@ -43,16 +44,16 @@ const CLOUD_FUNCTIONS = {
   LOGIN: 'login',
   ADD_CHAT_HISTORY: 'addChatHistory',
   ADD_HEALTH_RECORD: 'addHealthRecord',
-  UPDATE_FAVORITES: 'updateFavorites',
-  DELETE_CHAT_HISTORY: 'deleteChatHistory',
-  DELETE_FAVORITE: 'deleteFavorite',
+  UPDATE_NOTES: 'updateNotes',
+  CLEAR_CHAT_HISTORY: 'clearChatHistory',
+  DELETE_NOTE: 'deleteNote',
   DELETE_HEALTH_RECORD: 'deleteHealthRecord',
   DELETE_USER_INFO: 'deleteUserInfo',
+  DELETE_CHAT_HISTORY: 'deleteChatHistory',
   UPDATE_USER_INFO: 'updateUserInfo',
   GET_HEALTH_RECORDS: 'getHealthRecords',
-  GET_PROMPT: 'getPromt',
+  GET_PROMPT: 'getPrompt',
   GET_CHAT_HISTORY: 'getChatHistory',
-  UPDATE_CHAT_HISTORY: 'updateChatHistory',
   UPDATE_HEALTH_RECORDS: 'updateHealthRecords',
   UPDATE_PROMPT: 'updatePrompt',
   UPDATE_USER_INFO: 'updateUserInfo',

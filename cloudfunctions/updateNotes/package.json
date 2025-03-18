@@ -1,7 +1,7 @@
 {
-  "name": "deleteChatHistory",
+  "name": "updateNotes",
   "version": "1.0.0",
-  "description": "删除聊天记录云函数",
+  "description": "更新用户笔记列表",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "wx-server-sdk": "latest"
+    "wx-server-sdk": "^2.13.1"
   }
 } 

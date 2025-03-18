@@ -3,7 +3,11 @@ import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 import solarTermService from '../../services/solarTermService'
 import userService from '../../services/userService'
-const { STORAGE_KEYS, CLOUD_FUNCTIONS, DEFAULT_HEALTH_RECORDS } = appConfig
+import fileUtil from '../../utils/fileUtil'
+import storageUtil from '../../utils/storageUtil'
+import uiUtil from '../../utils/uiUtil'
+
+const { STORAGE_KEYS, DEFAULT_HEALTH_RECORDS } = appConfig
 
 Page({
   data: {
@@ -12,9 +16,9 @@ Page({
     menuList: [
       {
         id: 1,
-        name: '我的收藏',
-        icon: '/images/icons/favorited.png',
-        url: '/pages/favorites/favorites',
+        name: '我的笔记',
+        icon: '/images/icons/my_notes.png',
+        url: '/pages/notes/notes',
       },
       {
         id: 2,
@@ -46,17 +50,18 @@ Page({
   // 页面生命周期函数
   // =============================================
 
-  onLoad() {
+  async onLoad() {
     Logger.info('个人页面加载')
 
     // 加载用户信息
+    const userInfo = await storageUtil.getStorage(STORAGE_KEYS.USER_INFO, {})
     this.setData({
-      userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) || {},
+      userInfo,
       isLoggedIn: app.globalData.isLoggedIn,
     })
   },
 
-  onShow() {
+  async onShow() {
     Logger.info('个人页面显示')
 
     // 检查登录是否发生变化
@@ -65,14 +70,12 @@ Page({
       this.setData({
         isLoggedIn: currentIsLoggedIn,
       })
+
       if (currentIsLoggedIn) {
-        this.setData({
-          userInfo: wx.getStorageSync(STORAGE_KEYS.USER_INFO) || {},
-        })
+        const userInfo = await storageUtil.getStorage(STORAGE_KEYS.USER_INFO, {})
+        this.setData({ userInfo })
       } else {
-        this.setData({
-          userInfo: {},
-        })
+        this.setData({ userInfo: {} })
       }
     }
 
@@ -89,11 +92,9 @@ Page({
 
   // 用户登录
   async login() {
-    wx.showLoading({
-      title: '登录中...',
-    })
-
     try {
+      uiUtil.showLoading('登录中...')
+
       const data = await userService.login(DEFAULT_HEALTH_RECORDS)
 
       this.setData({
@@ -105,255 +106,147 @@ Page({
       app.globalData.isLoggedIn = true
       app.globalData.prompt_healthRecords = data.healthRecordsPrompt || ''
 
-      await Promise.all([
-        // 更新用户信息
-        wx.setStorage({
-          key: STORAGE_KEYS.USER_INFO,
-          data: data.userInfo,
-        }),
-
-        // 更新登录状态
-        wx.setStorage({
-          key: STORAGE_KEYS.IS_LOGGED_IN,
-          data: true,
-        }),
-
-        // 更新聊天记录
-        wx.setStorage({
-          key: STORAGE_KEYS.CHAT_HISTORY,
-          data: data.chatHistory || pas,
-        }),
-
-        // 更新提示词
-        wx.setStorage({
-          key: STORAGE_KEYS.PROMPT_HEALTH_RECORDS,
-          data: data.healthRecordsPrompt || '',
-        }),
-
-        wx.setStorage({
-          key: STORAGE_KEYS.HEALTH_RECORDS,
-          data: data.healthRecords || DEFAULT_HEALTH_RECORDS,
-        }),
-
-        // 更新收藏夹
-        wx.setStorage({
-          key: STORAGE_KEYS.FAVORITES,
-          data: data.favorites || [],
-        }),
+      // 批量保存数据到本地存储
+      await storageUtil.batchSetStorage([
+        { key: STORAGE_KEYS.USER_INFO, data: data.userInfo },
+        { key: STORAGE_KEYS.IS_LOGGED_IN, data: true },
+        { key: STORAGE_KEYS.CHAT_HISTORY, data: data.chatHistory || [] },
+        { key: STORAGE_KEYS.HEALTH_RECORDS_PROMPT, data: data.healthRecordsPrompt || '' },
+        { key: STORAGE_KEYS.HEALTH_RECORDS, data: data.healthRecords || DEFAULT_HEALTH_RECORDS },
+        { key: STORAGE_KEYS.NOTES, data: data.notes || [] },
       ])
 
-      wx.hideLoading()
+      uiUtil.hideLoading()
     } catch (err) {
-      // 提示用户登录失败
-      wx.showToast({
-        title: '登录失败，请重试\n' + err.message,
-        icon: 'none',
-        duration: 2000,
-      })
-
+      uiUtil.hideLoading()
+      await uiUtil.showToast('登录错误\n' + err.message, 'none', 2000)
       Logger.error('登录失败', err)
     }
   },
 
   // 编辑用户信息
-  editUserInfo() {
+  async editUserInfo() {
     if (!this.data.isLoggedIn) {
       return
     }
 
-    wx.showActionSheet({
-      itemList: ['修改头像', '修改昵称'],
-      success: res => {
-        if (res.tapIndex === 0) {
-          // 修改头像
-          this.changeAvatar()
-        } else if (res.tapIndex === 1) {
-          // 修改昵称
-          this.changeNickname()
-        }
-      },
-    })
+    try {
+      const result = await uiUtil.showActionSheet(['修改头像', '修改昵称'])
+
+      // 用户取消了操作
+      if (result.tapIndex === -1 || result.canceled) {
+        Logger.info('用户取消了编辑操作')
+        return
+      }
+
+      if (result.tapIndex === 0) {
+        // 修改头像
+        await this.changeAvatar()
+      } else if (result.tapIndex === 1) {
+        // 修改昵称
+        await this.changeNickname()
+      }
+    } catch (error) {
+      // 忽略由用户取消操作导致的错误
+      if (error && error.errMsg && error.errMsg.indexOf('cancel') !== -1) {
+        Logger.info('用户取消了操作')
+        return
+      }
+
+      Logger.error('编辑用户信息失败', error)
+    }
   },
 
   // 修改头像
-  changeAvatar() {
-    wx.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: res => {
-        const tempFilePath = res.tempFilePaths[0]
+  async changeAvatar() {
+    try {
+      // 选择图片
+      const res = await wx.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+      })
 
-        // 显示加载提示
-        wx.showLoading({
-          title: '上传中...',
-        })
+      const tempFilePath = res.tempFilePaths[0]
 
-        // 压缩图片，设置宽度为200，保持原比例
-        wx.compressImage({
-          src: tempFilePath,
-          quality: 80, // 压缩质量，80%已经是很好的压缩比例
-          compressedWidth: 200, // 宽度设置为200px，适合头像显示
-          success: compressRes => {
-            const compressedPath = compressRes.tempFilePath
+      // 显示加载提示
+      uiUtil.showLoading('上传中...')
 
-            // 上传压缩后的图片到云存储
-            const cloudPath = `mamawise/miniprogram/images/user_avatar/${
-              app.globalData.openid || 'user'
-            }_${new Date().getTime()}.png`
+      // 处理并上传头像
+      const fileID = await fileUtil.processAndUploadAvatar(tempFilePath, app.globalData.openid)
 
-            wx.cloud.uploadFile({
-              cloudPath: cloudPath,
-              filePath: compressedPath,
-              success: res => {
-                const fileID = res.fileID
+      // 使用userService更新用户头像
+      await userService.updateUserInfo('avatarUrl', fileID)
 
-                // 调用云函数更新用户头像
-                wx.cloud
-                  .callFunction({
-                    name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-                    data: {
-                      property: 'avatarUrl',
-                      value: fileID,
-                    },
-                  })
-                  .then(res => {
-                    wx.hideLoading()
+      // 更新本地状态
+      const updatedUserInfo = {
+        ...this.data.userInfo,
+        avatarUrl: fileID,
+      }
 
-                    if (!res || !res.result) {
-                      wx.showToast({
-                        title: '更新失败，请重试',
-                        icon: 'none',
-                      })
-                      return
-                    }
+      this.setData({ userInfo: updatedUserInfo })
 
-                    const { success, error } = res.result
+      // 更新本地存储
+      await storageUtil.setStorage(STORAGE_KEYS.USER_INFO, updatedUserInfo)
 
-                    if (success) {
-                      // 更新本地状态
-                      const updatedUserInfo = {
-                        ...this.data.userInfo,
-                        avatarUrl: fileID,
-                      }
+      uiUtil.hideLoading()
+      Logger.info('用户头像已更新', { fileID })
+    } catch (err) {
+      uiUtil.hideLoading()
 
-                      this.setData({
-                        userInfo: updatedUserInfo,
-                      })
+      // 用户取消选择图片，不显示错误提示
+      if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
+        Logger.info('用户取消选择图片')
+        return
+      }
 
-                      // 更新本地存储
-                      wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
-
-                      wx.showToast({
-                        title: '头像已更新',
-                        icon: 'success',
-                      })
-
-                      Logger.info('用户头像已更新', { fileID })
-                    } else {
-                      Logger.error('更新头像失败', error)
-                      wx.showToast({
-                        title: '更新失败，请重试',
-                        icon: 'none',
-                      })
-                    }
-                  })
-                  .catch(err => {
-                    wx.hideLoading()
-                    Logger.error('更新头像失败', err)
-                    wx.showToast({
-                      title: '更新失败，请重试',
-                      icon: 'none',
-                    })
-                  })
-              },
-              fail: err => {
-                wx.hideLoading()
-                Logger.error('上传头像失败', err)
-                wx.showToast({
-                  title: '上传失败，请重试',
-                  icon: 'none',
-                })
-              },
-            })
-          },
-          fail: err => {
-            wx.hideLoading()
-            Logger.error('压缩头像失败', err)
-            wx.showToast({
-              title: '图片处理失败，请重试',
-              icon: 'none',
-            })
-          },
-        })
-      },
-    })
+      await uiUtil.showToast('更新失败，请重试', 'none')
+      Logger.error('更新头像失败', err)
+    }
   },
 
   // 修改昵称
-  changeNickname() {
-    wx.showModal({
-      title: '修改昵称',
-      editable: true,
-      placeholderText: this.data.userInfo.nickName,
-      success: async res => {
-        if (res.confirm && res.content.trim()) {
-          const newNickname = res.content.trim()
+  async changeNickname() {
+    try {
+      const modalResult = await uiUtil.showModal({
+        title: '修改昵称',
+        editable: true,
+        placeholderText: this.data.userInfo.nickName,
+      })
 
-          try {
-            wx.showLoading({ title: '保存中...' })
+      if (modalResult.confirm && modalResult.content.trim()) {
+        const newNickname = modalResult.content.trim()
 
-            // 调用云函数更新用户信息
-            const result = await wx.cloud.callFunction({
-              name: CLOUD_FUNCTIONS.UPDATE_USER_INFO,
-              data: {
-                property: 'nickName',
-                value: newNickname,
-              },
-            })
+        uiUtil.showLoading('保存中...')
 
-            wx.hideLoading()
+        const userServiceResult = await userService.updateUserInfo('nickName', newNickname)
 
-            if (!result || !result.result) {
-              throw new Error('无效更新响应')
-            }
+        uiUtil.hideLoading()
 
-            const { success, error } = result.result
+        Logger.info('用户昵称更新结果', userServiceResult)
 
-            if (success) {
-              // 更新本地状态
-              const updatedUserInfo = {
-                ...this.data.userInfo,
-                nickName: newNickname,
-              }
-
-              this.setData({
-                userInfo: updatedUserInfo,
-              })
-
-              // 更新本地存储
-              wx.setStorageSync(STORAGE_KEYS.USER_INFO, updatedUserInfo)
-
-              wx.showToast({
-                title: '昵称已更新',
-                icon: 'success',
-              })
-
-              Logger.info('用户昵称已更新', { newNickname })
-            } else {
-              throw new Error(error || '更新失败')
-            }
-          } catch (error) {
-            wx.hideLoading()
-            wx.showToast({
-              title: '更新失败，请重试',
-              icon: 'none',
-            })
-            Logger.error('更新用户昵称失败', error)
-          }
+        if (!userServiceResult || !userServiceResult.success) {
+          throw new Error('无效更新响应')
         }
-      },
-    })
+
+        // 更新本地状态
+        const updatedUserInfo = {
+          ...this.data.userInfo,
+          nickName: newNickname,
+        }
+
+        this.setData({ userInfo: updatedUserInfo })
+
+        // 更新本地存储
+        await storageUtil.setStorage(STORAGE_KEYS.USER_INFO, updatedUserInfo)
+
+        Logger.info('用户昵称已更新', { newNickname })
+      }
+    } catch (error) {
+      uiUtil.hideLoading()
+      await uiUtil.showToast('更新失败，请重试', 'none')
+      Logger.error('更新用户昵称失败', error)
+    }
   },
 
   // =============================================
@@ -416,7 +309,7 @@ Page({
   },
 
   // 导航到菜单项
-  navigateTo(e) {
+  async navigateTo(e) {
     const item = e.currentTarget.dataset.item
 
     // 如果有特定操作，执行对应函数
@@ -425,34 +318,28 @@ Page({
       return
     }
 
-    // 检查"我的收藏"是否需要登录
-    if (item.name === '我的收藏' && !this.data.isLoggedIn) {
-      wx.showModal({
+    // 检查"我的笔记"是否需要登录
+    if (item.name === '我的笔记' && !this.data.isLoggedIn) {
+      const modalResult = await uiUtil.showModal({
         title: '提示',
-        content: '请先登录，才能查看收藏内容',
+        content: '请先登录，才能查看笔记内容',
         confirmText: '去登录',
         cancelText: '取消',
-        success: res => {
-          if (res.confirm) {
-            this.login()
-          }
-        },
       })
+
+      if (modalResult.confirm) {
+        await this.login()
+      }
       return
     }
 
     // 否则执行普通导航
     const url = item.url
     if (url) {
-      wx.navigateTo({
-        url: url,
-      })
+      wx.navigateTo({ url })
       Logger.debug('用户导航到', { url })
     } else {
-      wx.showToast({
-        title: '功能开发中',
-        icon: 'none',
-      })
+      await uiUtil.showToast('功能开发中')
       Logger.debug('用户尝试访问开发中的功能')
     }
   },

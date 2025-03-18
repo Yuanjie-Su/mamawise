@@ -17,7 +17,7 @@ import appConfig from './config/appConfig'
 import chatService from './services/chatService'
 import Logger from './utils/logger'
 
-const { STORAGE_KEYS } = appConfig
+const { STORAGE_KEYS, CLOUD_FUNCTIONS } = appConfig
 
 App({
   async onLaunch() {
@@ -38,48 +38,90 @@ App({
     }
 
     // 未保存消息计数
-    let messagesUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER) || 0
-    let isFavoritesChanged = wx.getStorageSync(STORAGE_KEYS.FAVORITES_CHANGED) || false
-
-    if (messagesUnsavedNumber > 0) {
-      chatService.saveChatHistoryToCloud(messagesUnsavedNumber)
+    let chatHistoryUnsavedCounter =
+      wx.getStorageSync(STORAGE_KEYS.CHAT_HISTORY_UNSAVED_COUNTER) || 0
+    // 同步聊天记录
+    if (chatHistoryUnsavedCounter > 0) {
+      chatService.saveChatHistoryToCloud(chatHistoryUnsavedCounter)
       Logger.info('登录时聊天记录已保存')
     }
 
-    if (isFavoritesChanged) {
-      chatService.saveFavoritesToCloud()
-      Logger.info('登录时收藏列表已保存')
+    // 同步笔记列表
+    let isNotesChanged = wx.getStorageSync(STORAGE_KEYS.NOTES_CHANGED) || false
+    if (isNotesChanged) {
+      chatService.saveNotesToCloud()
+      Logger.info('登录时笔记列表已保存')
     }
 
-    // 已登录从本地存储获取提示词
-    this.globalData.prompt_healthRecords = wx.getStorageSync(STORAGE_KEYS.PROMPT_HEALTH_RECORDS)
+    // 同步提示词
+    const healthRecordsPrompt = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT)
+    this.globalData.healthRecordsPrompt = healthRecordsPrompt
+    const healthRecordsPromptChanged = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED)
+    if (healthRecordsPromptChanged) {
+      wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, false)
+      wx.cloud
+        .callFunction({
+          name: CLOUD_FUNCTIONS.UPDATE_PROMPT,
+          data: {
+            healthRecordsPrompt: healthRecordsPrompt,
+          },
+        })
+        .then(() => {
+          Logger.info('登录时健康记录提示词已保存')
+        })
+        .catch(err => {
+          wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, true)
+          Logger.error('登录时健康记录提示词保存失败', err)
+        })
+    }
+  },
 
-    // 监听小程序隐藏事件
-    wx.onAppHide(async () => {
-      Logger.info('小程序隐藏')
-      if (!this.globalData.isLoggedIn) {
-        return
-      }
+  onHide() {
+    Logger.info('小程序隐藏')
+    if (!this.globalData.isLoggedIn) {
+      return
+    }
 
-      const currentMessagesUnsavedNumber = wx.getStorageSync(STORAGE_KEYS.UNSAVED_COUNTER)
-      Logger.info('小程序隐藏时聊天记录变化', currentMessagesUnsavedNumber)
-      if (currentMessagesUnsavedNumber > 0) {
-        chatService.saveChatHistoryToCloud(currentMessagesUnsavedNumber)
-        Logger.info('小程序隐藏时聊天记录已保存')
-      }
+    // 同步聊天记录
+    const currentChatHistoryUnsavedCounter = wx.getStorageSync(
+      STORAGE_KEYS.CHAT_HISTORY_UNSAVED_COUNTER
+    )
+    Logger.info('小程序隐藏时聊天记录未保存计数', currentChatHistoryUnsavedCounter)
+    if (currentChatHistoryUnsavedCounter > 0) {
+      chatService.saveChatHistoryToCloud(currentChatHistoryUnsavedCounter)
+      Logger.info('小程序隐藏时聊天记录已保存')
+    }
 
-      const currentIsFavoritesChanged = wx.getStorageSync(STORAGE_KEYS.FAVORITES_CHANGED)
-      Logger.info('小程序隐藏时收藏列表变化', currentIsFavoritesChanged)
-      if (currentIsFavoritesChanged) {
-        chatService.saveFavoritesToCloud()
-        Logger.info('小程序隐藏时收藏列表已保存')
-      }
-    })
+    // 同步笔记列表
+    const currentIsNotesChanged = wx.getStorageSync(STORAGE_KEYS.NOTES_CHANGED)
+    Logger.info('小程序隐藏时笔记列表变化', currentIsNotesChanged)
+    if (currentIsNotesChanged) {
+      chatService.saveNotesToCloud()
+    }
+
+    // 同步提示词
+    const currentHealthRecordsPrompt = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT)
+    Logger.info('小程序隐藏时健康记录提示词', currentHealthRecordsPrompt)
+    if (currentHealthRecordsPrompt) {
+      wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, false)
+      wx.cloud
+        .callFunction({
+          name: CLOUD_FUNCTIONS.UPDATE_PROMPT,
+          data: { healthRecordsPrompt: currentHealthRecordsPrompt },
+        })
+        .then(() => {
+          Logger.info('小程序隐藏时健康记录提示词已同步')
+        })
+        .catch(err => {
+          wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, true)
+          Logger.error('小程序隐藏时健康记录提示词同步失败', err)
+        })
+    }
   },
 
   globalData: {
     isLoggedIn: false,
     troggleLogin: true,
-    prompt_healthRecords: '',
+    healthRecordsPrompt: '',
   },
 })

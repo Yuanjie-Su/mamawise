@@ -1,0 +1,34 @@
+<!-- 笔记页面 -->
+<view class="notes-container">
+  <!-- 空状态提示 -->
+  <view class="empty-state" wx:if="{{notes.length === 0}}">
+    <text class="empty-text">暂无笔记内容</text>
+    <text class="empty-subtext">在聊天中点击"添加笔记"可将AI回复添加到笔记</text>
+  </view>
+  
+  <!-- 笔记列表 -->
+  <view class="notes-list" wx:else>
+    <view class="note-item" wx:for="{{notes}}" wx:key="id" bindtap="viewNote" data-id="{{item.id}}">
+      <view class="note-title">{{item.title || '笔记内容'}}</view>
+      <view class="note-content">
+        <text class="note-text">{{item.content}}</text>
+      </view>
+      <view class="note-footer">
+        <text class="note-date">{{item.date}}</text>
+        <view class="note-actions">
+          <view class="action-btn" catchtap="deleteNote" data-id="{{item.id}}">
+            <image class="action-icon" src="/images/icons/cancel.png"></image>
+            <text>删除</text>
+          </view>
+          <view class="action-btn" catchtap="shareNote" data-id="{{item.id}}">
+            <image class="action-icon" src="/images/icons/share.png"></image>
+            <text>分享</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 用于生成分享图片的画布（隐藏） -->
+  <canvas canvas-id="shareCanvas" style="width: 300px; height: 400px; position: fixed; top: -1000px;"></canvas>
+</view> 

@@ -8,51 +8,27 @@ import appConfig from '../config/appConfig'
 
 const { CLOUD_FUNCTIONS } = appConfig
 
-// 默认提示词-提建议
-const DEFAULT_PROMPT = `你是一位专业的孕产妇健康顾问，你的职责是为孕期和产后的妈妈提供专业、温暖的健康指导和建议。
-请以友善、专业的语气回答用户的问题，避免过于冰冷或机械的回复。
-如果用户询问的问题超出你的知识范围或不确定的内容，请诚实告知并建议用户咨询专业医生。
-\n\n
-回复内容包含正文和标题。
-正文不需要包含任何打招呼语句（如"您好"、"亲爱的准妈妈"等），需要通过emoji表情润色，结构清晰。
-正文中每个建议尽量详细，不要过于简略。
-标题简短（不超过20个字）。
-\n\n回复格式要求：
-正文
---- 标题
-`
+// 系统前置提示词
+const SYSTEM_PROMPTS = {
+  default: `你是一位专业的孕产妇健康顾问，根据用户的健康记录、聊天记录，为孕期和产后的妈妈提供专业、温暖的健康指导和建议。
+  如果用户询问的问题超出你的知识范围或不确定的内容，请诚实告知并建议用户咨询专业医生。
+  \n\n
+  回复内容包含正文和标题。
+  正文不需要包含任何打招呼语句（如"您好"、"亲爱的准妈妈"等），需要通过emoji表情润色，结构清晰。
+  正文中每个建议尽量详细，不要过于简略。
+  标题简短（不超过20个字）。
+  \n\n回复格式要求：
+  正文
+  --- 标题
+  `,
+}
 
 /**
  * 获取提示词
  * @returns {Promise<Object>} 提示词
  */
-async function getPrompt() {
-  try {
-    const prompt = await wx.cloud.callFunction({
-      name: CLOUD_FUNCTIONS.GET_PROMPT,
-    })
-
-    if (prompt.result.success) {
-      return prompt.result.healthRecordsPrompt
-    } else {
-      Logger.error('云函数获取提示词失败', prompt.result.error)
-      return ''
-    }
-  } catch (error) {
-    Logger.error('promptService.getPrompt 获取提示词失败', error)
-    return ''
-  }
-}
-
-/**
- * 获取空的提示词
- * @returns {Object} 空的提示词
- */
-function getDefaultPrompt() {
-  return {
-    prefix: DEFAULT_PROMPT,
-    healthRecords: '',
-  }
+function getPrompt(promptType = 'default') {
+  return SYSTEM_PROMPTS[promptType]
 }
 
 /**
@@ -354,20 +330,28 @@ function updateBloodPressurePrompt(promptLines, bloodPressureRecords) {
   }
 
   // 生成新的血压记录行
-  let bpLine = null
-  if (bloodPressureRecords && bloodPressureRecords.length > 0) {
-    const latest = bloodPressureRecords[bloodPressureRecords.length - 1]
-    bpLine = `血压：${latest.value}mmHg (${latest.date})`
+  // 每一项记录都加上日期，防止bloodPressureRecords为空
+  if (!bloodPressureRecords || bloodPressureRecords.length === 0) {
+    bloodPressureRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (bpLine) {
+  const bpLines = bloodPressureRecords.map(record => {
+    return `血压：${record.value}mmHg (${record.date})`
+  })
+
+  if (bpLines.length > 0) {
     if (bpLineIndex !== -1) {
       // 替换现有行
-      promptLines[bpLineIndex] = bpLine
+      promptLines[bpLineIndex] = bpLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, bpLine)
+      promptLines.splice(vitalsSection.start + 1, 0, bpLines.join('\n'))
     }
   } else if (bpLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -391,20 +375,28 @@ function updateWeightPrompt(promptLines, weightRecords) {
   }
 
   // 生成新的体重记录行
-  let weightLine = null
-  if (weightRecords && weightRecords.length > 0) {
-    const latest = weightRecords[weightRecords.length - 1]
-    weightLine = `体重：${latest.value}kg (${latest.date})`
+  // 每一项记录都加上日期，防止weightRecords为空
+  if (!weightRecords || weightRecords.length === 0) {
+    weightRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (weightLine) {
+  const weightLines = weightRecords.map(record => {
+    return `体重：${record.value}kg (${record.date})`
+  })
+
+  if (weightLines.length > 0) {
     if (weightLineIndex !== -1) {
       // 替换现有行
-      promptLines[weightLineIndex] = weightLine
+      promptLines[weightLineIndex] = weightLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, weightLine)
+      promptLines.splice(vitalsSection.start + 1, 0, weightLines.join('\n'))
     }
   } else if (weightLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -427,20 +419,28 @@ function updateBloodSugarPrompt(promptLines, bloodSugarRecords) {
   }
 
   // 生成新的血糖记录行
-  let bsLine = null
-  if (bloodSugarRecords && bloodSugarRecords.length > 0) {
-    const latest = bloodSugarRecords[bloodSugarRecords.length - 1]
-    bsLine = `血糖：${latest.value}mmol/L (${latest.date})`
+  // 每一项记录都加上日期，防止bloodSugarRecords为空
+  if (!bloodSugarRecords || bloodSugarRecords.length === 0) {
+    bloodSugarRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (bsLine) {
+  const bsLines = bloodSugarRecords.map(record => {
+    return `血糖：${record.value}mmol/L (${record.date})`
+  })
+
+  if (bsLines.length > 0) {
     if (bsLineIndex !== -1) {
       // 替换现有行
-      promptLines[bsLineIndex] = bsLine
+      promptLines[bsLineIndex] = bsLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, bsLine)
+      promptLines.splice(vitalsSection.start + 1, 0, bsLines.join('\n'))
     }
   } else if (bsLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -463,20 +463,28 @@ function updateTemperaturePrompt(promptLines, temperatureRecords) {
   }
 
   // 生成新的体温记录行
-  let tempLine = null
-  if (temperatureRecords && temperatureRecords.length > 0) {
-    const latest = temperatureRecords[temperatureRecords.length - 1]
-    tempLine = `体温：${latest.value}°C (${latest.date})`
+  // 每一项记录都加上日期，防止temperatureRecords为空
+  if (!temperatureRecords || temperatureRecords.length === 0) {
+    temperatureRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (tempLine) {
+  const tempLines = temperatureRecords.map(record => {
+    return `体温：${record.value}°C (${record.date})`
+  })
+
+  if (tempLines.length > 0) {
     if (tempLineIndex !== -1) {
       // 替换现有行
-      promptLines[tempLineIndex] = tempLine
+      promptLines[tempLineIndex] = tempLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, tempLine)
+      promptLines.splice(vitalsSection.start + 1, 0, tempLines.join('\n'))
     }
   } else if (tempLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -499,20 +507,28 @@ function updateHeartRatePrompt(promptLines, heartRateRecords) {
   }
 
   // 生成新的心率记录行
-  let hrLine = null
-  if (heartRateRecords && heartRateRecords.length > 0) {
-    const latest = heartRateRecords[heartRateRecords.length - 1]
-    hrLine = `心率：${latest.value}次/分 (${latest.date})`
+  // 每一项记录都加上日期，防止heartRateRecords为空
+  if (!heartRateRecords || heartRateRecords.length === 0) {
+    heartRateRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (hrLine) {
+  const hrLines = heartRateRecords.map(record => {
+    return `心率：${record.value}次/分 (${record.date})`
+  })
+
+  if (hrLines.length > 0) {
     if (hrLineIndex !== -1) {
       // 替换现有行
-      promptLines[hrLineIndex] = hrLine
+      promptLines[hrLineIndex] = hrLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, hrLine)
+      promptLines.splice(vitalsSection.start + 1, 0, hrLines.join('\n'))
     }
   } else if (hrLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -535,20 +551,28 @@ function updateFetalMovementPrompt(promptLines, fetalMovementRecords) {
   }
 
   // 生成新的胎动记录行
-  let fmLine = null
-  if (fetalMovementRecords && fetalMovementRecords.length > 0) {
-    const latest = fetalMovementRecords[fetalMovementRecords.length - 1]
-    fmLine = `胎动：${latest.value}次/小时 (${latest.date})`
+  // 每一项记录都加上日期，防止fetalMovementRecords为空
+  if (!fetalMovementRecords || fetalMovementRecords.length === 0) {
+    fetalMovementRecords = [
+      {
+        value: '未知',
+        date: '未知',
+      },
+    ]
   }
 
-  if (fmLine) {
+  const fmLines = fetalMovementRecords.map(record => {
+    return `胎动：${record.value}次/小时 (${record.date})`
+  })
+
+  if (fmLines.length > 0) {
     if (fmLineIndex !== -1) {
       // 替换现有行
-      promptLines[fmLineIndex] = fmLine
+      promptLines[fmLineIndex] = fmLines.join('\n')
     } else {
       // 插入到体征记录部分
       const vitalsSection = findVitalsSection(promptLines)
-      promptLines.splice(vitalsSection.start + 1, 0, fmLine)
+      promptLines.splice(vitalsSection.start + 1, 0, fmLines.join('\n'))
     }
   } else if (fmLineIndex !== -1) {
     // 如果没有记录但存在行，则删除该行
@@ -698,5 +722,4 @@ function findVitalsSection(promptLines) {
 export default {
   getPrompt,
   updatePartialRcordsPrompt,
-  getDefaultPrompt,
 }

@@ -6,7 +6,8 @@
   padding: 0;
   background-color: #F8F8F8;
   position: relative;
-  overflow: hidden; /* 防止内容溢出 */
+  overflow: hidden;
+  /* 防止内容溢出 */
 }
 
 .chat-header {
@@ -67,8 +68,10 @@
   display: flex;
   align-items: center;
   margin-left: auto;
-  min-width: 80rpx; /* 设置最小宽度，确保区域不会缩小 */
-  height: 40rpx; /* 设置固定高度 */
+  min-width: 80rpx;
+  /* 设置最小宽度，确保区域不会缩小 */
+  height: 40rpx;
+  /* 设置固定高度 */
 }
 
 .records-btn {
@@ -88,8 +91,10 @@
 }
 
 .placeholder {
-  width: 80rpx; /* 与clear-btn按钮宽度一致 */
-  height: 40rpx; /* 与clear-btn按钮高度一致 */
+  width: 80rpx;
+  /* 与clear-btn按钮宽度一致 */
+  height: 40rpx;
+  /* 与clear-btn按钮高度一致 */
 }
 
 /* 模型选择器样式 */
@@ -180,8 +185,10 @@
   padding: 20rpx 30rpx;
   overflow-y: auto;
   flex: 1;
-  padding-bottom: 160rpx; /* 增加底部padding，为悬浮按钮留出空间 */
-  height: calc(100vh - 180rpx); /* 减去头部和输入框的高度 */
+  padding-bottom: 160rpx;
+  /* 增加底部padding，为悬浮按钮留出空间 */
+  height: calc(100vh - 180rpx);
+  /* 减去头部和输入框的高度 */
   box-sizing: border-box;
 }
 
@@ -224,9 +231,14 @@
 .message-item {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8rpx; /* 减少底部间距 */
+  margin-bottom: 30rpx;
+  transition: opacity 0.2s;
   position: relative;
-  max-width: 90%;
+  max-width: 100%;
+}
+
+.message-item:active {
+  opacity: 0.7;
 }
 
 .system-message {
@@ -268,8 +280,10 @@
 .loading-container {
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 20rpx; /* 减少底部间距 */
-  margin-top: 4rpx; /* 添加顶部间距 */
+  margin-bottom: 20rpx;
+  /* 减少底部间距 */
+  margin-top: 4rpx;
+  /* 添加顶部间距 */
   padding-left: 60rpx;
 }
 
@@ -299,6 +313,7 @@
   0% {
     opacity: 0.2;
   }
+
   100% {
     opacity: 1;
   }
@@ -330,24 +345,33 @@
   font-size: 28rpx;
 }
 
-.erase-btn, .send-btn {
-  width: 60rpx; /* 调整宽度 */
-  height: 60rpx; /* 调整高度 */
+.erase-btn,
+.send-btn {
+  width: 60rpx;
+  /* 调整宽度 */
+  height: 60rpx;
+  /* 调整高度 */
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 20rpx; /* 圆形按钮 */
-  background-color: transparent; /* 默认背景透明 */
+  border-radius: 20rpx;
+  /* 圆形按钮 */
+  background-color: transparent;
+  /* 默认背景透明 */
 }
 
 .erase-icon {
-  width: 40rpx; /* 图标宽度 */
-  height: 40rpx; /* 图标高度 */
+  width: 40rpx;
+  /* 图标宽度 */
+  height: 40rpx;
+  /* 图标高度 */
 }
 
 .send-icon {
-  width: 48rpx; /* 图标宽度 */
-  height: 48rpx; /* 图标高度 */
+  width: 48rpx;
+  /* 图标宽度 */
+  height: 48rpx;
+  /* 图标高度 */
 }
 
 .fallback-text {
@@ -361,42 +385,49 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 28rpx;
-  line-height: 1.4; /* 减少行高 */
-  margin: 0; /* 确保没有额外的margin */
-  padding: 0; /* 确保没有额外的padding */
+  line-height: 1.4;
+  /* 减少行高 */
+  margin: 0;
+  /* 确保没有额外的margin */
+  padding: 0;
+  /* 确保没有额外的padding */
 }
 
 /* 消息操作按钮样式 */
 .message-actions {
   display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
   margin-top: 8rpx;
-  opacity: 0.7;
 }
 
 .action-btn {
   display: flex;
-  align-items: center;
   justify-content: center;
-  width: 48rpx;
-  height: 48rpx;
-  margin-right: 16rpx;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-.action-btn.disabled {
-  opacity: 0.5;
-  pointer-events: none;
+  align-items: center;
+  margin-right: 20rpx;
+  padding: 8rpx;
+  border-radius: 8rpx;
 }
 
 .action-icon {
-  width: 32rpx;
-  height: 32rpx;
+  width: 40rpx;
+  height: 40rpx;
 }
 
-.copy-btn:active, .share-btn:active, .share-image-btn:active {
-  opacity: 0.6;
-  transform: scale(0.95);
+.copy-btn,
+.share-btn,
+.note-btn,
+.save-image-btn {
+  background-color: #ffffff;
+}
+
+.copy-btn:active,
+.share-btn:active,
+.note-btn:active,
+.save-image-btn:active {
+  background-color: #ffffff;
 }
 
 /* 确保消息列表内容正确填充 */
@@ -411,7 +442,8 @@
 .floating-clear-btn {
   position: fixed;
   right: 30rpx;
-  bottom: 140rpx; /* 位于输入框上方 */
+  bottom: 140rpx;
+  /* 位于输入框上方 */
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
@@ -444,4 +476,105 @@
   justify-content: left;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* 长按消息操作菜单 */
+.message-action-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+}
+
+.menu-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.menu-content {
+  width: 440rpx;
+  max-width: 90%;
+  background-color: #313131;
+  border-radius: 20rpx;
+  position: absolute;
+  z-index: 1001;
+  overflow: visible;
+  animation: pop-in 0.2s ease;
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.2);
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.menu-title {
+  display: none;
+}
+
+.menu-options {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 12rpx;
+}
+
+.menu-option {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0;
+}
+
+.menu-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 8rpx;
+}
+
+.menu-text {
+  font-size: 24rpx;
+  color: #FFFFFF;
+}
+
+.menu-arrow {
+  position: absolute;
+  bottom: -16rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 16rpx solid transparent;
+  border-right: 16rpx solid transparent;
+  border-top: 16rpx solid #313131;
+}
+
+.delete-option .menu-text {
+  color: #FFFFFF;
+}
+
+.menu-cancel {
+  display: none;
+}
+
+.menu-cancel:active {
+  background-color: #F5F5F5;
 }

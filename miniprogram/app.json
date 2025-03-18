@@ -6,8 +6,8 @@
     "pages/settings/settings",
     "pages/policy/privacy",
     "pages/policy/agreement",
-    "pages/favorites/favorites",
-    "pages/favorite-detail/favorite-detail"
+    "pages/notes/notes",
+    "pages/note-detail/note-detail"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -24,20 +24,20 @@
       {
         "pagePath": "pages/chat/chat",
         "text": "咨询",
-        "iconPath": "images/chat.png",
-        "selectedIconPath": "images/chat_selected.png"
+        "iconPath": "images/icons/chat.png",
+        "selectedIconPath": "images/icons/chat_selected.png"
       },
       {
         "pagePath": "pages/records/records",
         "text": "健康档案",
-        "iconPath": "images/records.png",
-        "selectedIconPath": "images/records_selected.png"
+        "iconPath": "images/icons/records.png",
+        "selectedIconPath": "images/icons/records_selected.png"
       },
       {
         "pagePath": "pages/profile/profile",
         "text": "我的",
-        "iconPath": "images/profile.png",
-        "selectedIconPath": "images/profile_selected.png"
+        "iconPath": "images/icons/profile.png",
+        "selectedIconPath": "images/icons/profile_selected.png"
       }
     ]
   },
@@ -49,4 +49,4 @@
   "subPackages": [],
   "usingComponents": {},
   "lazyCodeLoading": "requiredComponents"
-} 
+}

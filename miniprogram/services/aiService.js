@@ -20,92 +20,79 @@ let isGenerationStopped = false
  * @returns {Promise} 返回生成结果的Promise
  */
 async function generateAIResponse(messages, userQuery, prompt, model_name, onProgress) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // 重置停止标志
-      isGenerationStopped = false
+  try {
+    // 重置停止标志
+    isGenerationStopped = false
 
-      // 用于跟踪是否已接收到第一段内容
-      let hasReceivedFirstContent = false
+    // // 用于跟踪是否已接收到第一段内容
+    // let hasReceivedFirstContent = false
 
-      // 构建消息历史
-      const messageHistory = messages.map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content,
-      }))
+    // 将聊天记录添加到prompt中
+    const promptWithHistory =
+      prompt +
+      '\n\n用户聊天记录：\n' +
+      messages.map(msg => `${msg.type}: ${msg.content}`).join('\n')
 
-      if (!prompt) {
-        prompt = DEFAULT_AI_CONFIG.PROMPT
-      }
+    // 获取当前选择的模型配置
+    const modelConfig = MODEL_CONFIG[model_name]
 
-      // 添加系统提示词
-      messageHistory.unshift({
-        role: 'system',
-        content: prompt,
-      })
+    if (!modelConfig) {
+      throw new Error(`未找到模型配置: ${model_name}`)
+    }
 
-      // 获取当前选择的模型配置
-      const modelConfig = MODEL_CONFIG[model_name]
+    // 创建模型实例
+    const model = wx.cloud.extend.AI.createModel('deepseek')
 
-      if (!modelConfig) {
-        throw new Error(`未找到模型配置: ${model_name}`)
-      }
+    // 使用流式响应
+    const res = await model.streamText({
+      data: {
+        model: modelConfig.api,
+        messages: [
+          {
+            role: 'system',
+            content: promptWithHistory,
+          },
+          {
+            role: 'user',
+            content: userQuery,
+          },
+        ],
+      },
+    })
 
-      // 创建模型实例
-      const model = wx.cloud.extend.AI.createModel('deepseek')
-
-      // 使用流式响应
-      const res = await model.streamText({
-        data: {
-          model: modelConfig.api,
-          messages: [
-            ...messageHistory,
-            {
-              role: 'user',
-              content: userQuery,
-            },
-          ],
-        },
-      })
-
-      // 处理eventStream响应
-      for await (let event of res.eventStream) {
-        // 如果生成已被停止，中断循环
-        if (isGenerationStopped) {
-          Logger.info('AI回复生成已被用户终止')
-          break
-        }
-
-        if (event.data === '[DONE]') break
-
-        const data = JSON.parse(event.data)
-        const text = data?.choices?.[0]?.delta?.content
-
-        if (text && onProgress) {
-          // 去除开头的空白行
-          let processedText = text
-          if (!hasReceivedFirstContent) {
-            processedText = text.replace(/^\n+/, '')
-            hasReceivedFirstContent = true
-          }
-
-          onProgress(processedText)
-        }
-      }
-
-      resolve(true)
-    } catch (error) {
-      // 如果是因为用户终止而导致的错误，不需要抛出
+    // 处理eventStream响应
+    for await (let event of res.eventStream) {
+      // 如果生成已被停止，中断循环
       if (isGenerationStopped) {
         Logger.info('AI回复生成已被用户终止')
-        resolve(true)
-        return
+        break
       }
 
-      Logger.error('生成AI回复时出错:', error)
-      reject(error)
+      if (event.data === '[DONE]') break
+
+      const data = JSON.parse(event.data)
+      const text = data?.choices?.[0]?.delta?.content
+
+      if (text && onProgress) {
+        // // 去除开头的空白行
+        // let processedText = text
+        // if (!hasReceivedFirstContent) {
+        //   processedText = text.replace(/^\n+/, '')
+        //   hasReceivedFirstContent = true
+        // }
+
+        onProgress(text)
+      }
     }
-  })
+  } catch (error) {
+    // 如果是因为用户终止而导致的错误，不需要抛出
+    if (isGenerationStopped) {
+      Logger.info('AI回复生成已被用户终止')
+      return
+    }
+
+    Logger.error('生成AI回复时出错:', error)
+  }
 }
 
 /**
