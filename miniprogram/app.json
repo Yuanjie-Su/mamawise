@@ -5,7 +5,6 @@
     "pages/profile/profile",
     "pages/settings/settings",
     "pages/policy/privacy",
-    "pages/policy/agreement",
     "pages/notes/notes",
     "pages/note-detail/note-detail"
   ],

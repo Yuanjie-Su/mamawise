@@ -964,6 +964,12 @@ Page({
     })
   },
 
+  // 阻止事件冒泡
+  stopPropagation() {
+    // 仅用于阻止事件冒泡
+    return
+  },
+
   // 加载模型设置
   loadModelSettings() {
     try {
