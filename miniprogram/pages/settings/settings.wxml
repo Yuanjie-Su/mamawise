@@ -29,9 +29,6 @@
                 <view class="model-name">{{item.name}}</view>
                 <view class="model-description">{{item.description}}</view>
               </view>
-              <view class="model-selected-indicator" wx:if="{{currentModelName === item.name}}">
-                <image class="selected-icon" src="/images/icons/selected.png" mode="aspectFit"></image>
-              </view>
             </view>
           </block>
         </view>

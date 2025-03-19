@@ -282,50 +282,6 @@
           </view>
         </view>
       </view>
-      
-      <!-- 产检记录 -->
-      <view class="tab-pane" hidden="{{activeTab !== 3}}">
-        <view class="section-header">
-          <text>产检记录</text>
-          <view class="add-info-btn" bindtap="uploadCheckupRecord">
-            <image class="edit-icon" src="/images/icons/add.png" mode="aspectFit"></image>
-          </view>
-        </view>
-        
-        <!-- 历史产检记录分析结果 -->
-        <view class="info-card" wx:if="{{checkupAnalysis}}">
-          <view class="card-title">产检记录分析</view>
-          <view class="analysis-content">{{checkupAnalysis}}</view>
-        </view>
-        
-        <view class="checkup-list">
-          <view class="checkup-item" wx:for="{{checkupRecords}}" wx:key="date">
-            <view class="checkup-header">
-              <view class="checkup-date">{{item.date}}</view>
-              <view class="checkup-week">孕{{item.week}}周</view>
-            </view>
-            <view class="checkup-body">
-              <view class="checkup-hospital">{{item.hospital}}</view>
-              <view class="checkup-doctor">医生: {{item.doctor}}</view>
-              <view class="checkup-items">
-                <view class="checkup-item-row" wx:for="{{item.items}}" wx:for-item="checkItem" wx:key="name">
-                  <text class="item-name">{{checkItem.name}}:</text>
-                  <text class="item-value">{{checkItem.value}}</text>
-                </view>
-              </view>
-              <view class="checkup-notes">
-                <text class="notes-label">医嘱:</text>
-                <text class="notes-content">{{item.notes}}</text>
-              </view>
-            </view>
-          </view>
-          
-          <!-- 没有记录时显示提示 -->
-          <view class="empty-tip" wx:if="{{!checkupRecords || checkupRecords.length === 0}}">
-            暂无产检记录
-          </view>
-        </view>
-      </view>
     </view>
   </block>
   

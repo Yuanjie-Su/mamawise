@@ -8,7 +8,6 @@
  * 4. 数据层 (Model)：models目录下的JS文件，负责数据结构定义和数据处理
  * 5. 工具层 (Utils)：utils目录下的JS文件，提供通用工具函数
  * 6. 配置层 (Config)：config目录下的JS文件，存储全局配置信息
- * 7. 组件层 (Components)：components目录下的自定义组件
  */
 
 // app.js
@@ -86,23 +85,22 @@ App({
     const currentChatHistoryUnsavedCounter = wx.getStorageSync(
       STORAGE_KEYS.CHAT_HISTORY_UNSAVED_COUNTER
     )
-    Logger.info('小程序隐藏时聊天记录未保存计数', currentChatHistoryUnsavedCounter)
     if (currentChatHistoryUnsavedCounter > 0) {
       chatService.saveChatHistoryToCloud(currentChatHistoryUnsavedCounter)
-      Logger.info('小程序隐藏时聊天记录已保存')
     }
 
     // 同步笔记列表
     const currentIsNotesChanged = wx.getStorageSync(STORAGE_KEYS.NOTES_CHANGED)
-    Logger.info('小程序隐藏时笔记列表变化', currentIsNotesChanged)
     if (currentIsNotesChanged) {
       chatService.saveNotesToCloud()
     }
 
     // 同步提示词
-    const currentHealthRecordsPrompt = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT)
-    Logger.info('小程序隐藏时健康记录提示词', currentHealthRecordsPrompt)
-    if (currentHealthRecordsPrompt) {
+    const currentHealthRecordsPromptChanged = wx.getStorageSync(
+      STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED
+    )
+    if (currentHealthRecordsPromptChanged) {
+      const currentHealthRecordsPrompt = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT)
       wx.setStorageSync(STORAGE_KEYS.HEALTH_RECORDS_PROMPT_CHANGED, false)
       wx.cloud
         .callFunction({

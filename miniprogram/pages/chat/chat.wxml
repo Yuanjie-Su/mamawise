@@ -1,5 +1,5 @@
 <!--pages/chat/chat.wxml-->
-<view class="container chat-container" bindtap="closeModelSelector">
+<view class="container chat-container">
   <!-- 隐藏的canvas用于生成分享图片 -->
   <canvas type="2d" id="shareCanvas" style="position: absolute; left: -9999px; width: 750px; height: {{canvasHeight}}px;"></canvas>
 

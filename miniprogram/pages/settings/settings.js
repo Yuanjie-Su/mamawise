@@ -106,36 +106,15 @@ Page({
   clearCache() {
     wx.showModal({
       title: '提示',
-      content: '确定要清除缓存吗？这将清除所有本地存储的数据（不包括登录信息和个人信息）。',
+      content: '确定要清除缓存吗？。',
       success: res => {
         if (res.confirm) {
-          // 保存重要数据
-          const userInfo = wx.getStorageSync(STORAGE_KEYS.USER_INFO)
-
-          // 清除所有缓存
-          wx.clearStorage({
-            success: () => {
-              // 恢复重要数据
-              if (userInfo) wx.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo)
-
-              // 重新计算缓存大小
-              this.calculateCacheSize()
-
-              wx.showToast({
-                title: '缓存已清除',
-                icon: 'success',
-              })
-
-              Logger.info('用户清除缓存成功')
-            },
-            fail: err => {
-              Logger.error('清除缓存失败', err)
-              wx.showToast({
-                title: '清除缓存失败',
-                icon: 'none',
-              })
-            },
-          })
+          // 缓存聊天记录设置为空
+          wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY, [])
+          wx.setStorageSync(STORAGE_KEYS.CHAT_HISTORY_UNSAVED_COUNTER, 0)
+          // 缓存笔记设置为空
+          wx.setStorageSync(STORAGE_KEYS.NOTES, [])
+          wx.setStorageSync(STORAGE_KEYS.NOTES_CHANGED, false)
         }
       },
     })

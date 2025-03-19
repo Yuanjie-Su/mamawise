@@ -19,15 +19,13 @@ const FIELDS = [
   'heartRateRecords',
   'fetalMovementRecords',
   'medications',
-  'checkupRecords',
-  'checkupAnalysis',
 ]
 
 Page({
   data: {
     isLoggedIn: false,
     activeTab: 0,
-    tabs: ['基本信息', '体征记录', '用药记录', '产检记录'],
+    tabs: ['基本信息', '体征记录', '用药记录'],
 
     // 扁平化的数据结构
     // 孕期信息
@@ -53,10 +51,6 @@ Page({
 
     // 药物记录
     medications: [],
-
-    // 产检记录
-    checkupRecords: [],
-    checkupAnalysis: '', // 添加产检分析结果
 
     // 其他信息表单相关
     showOtherInfoForm: false,
@@ -302,7 +296,7 @@ Page({
     }
   },
 
-  // 从本地加载'基本信息', '体征记录', '用药记录', '产检记录'
+  // 从本地加载'基本信息', '体征记录', '用药记录'
   async loadHealthRecords() {
     try {
       const healthRecords = wx.getStorageSync(STORAGE_KEYS.HEALTH_RECORDS) || DEFAULT_HEALTH_RECORDS
@@ -1381,193 +1375,6 @@ Page({
     })
   },
 
-  // =============================================
-  // 产检记录相关函数
-  // =============================================
-
-  // 上传产检记录照片
-  uploadCheckupRecord() {
-    // 如果未登录或未完善个人信息，提示用户
-    if (!this.data.isLoggedIn || !this.data.hasPersonalInfo) {
-      wx.showToast({
-        title: '请先登录并完善个人信息',
-        icon: 'none',
-      })
-      return
-    }
-
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success: res => {
-        const tempFilePath = res.tempFiles[0].tempFilePath
-
-        // 显示加载提示
-        wx.showLoading({
-          title: '正在识别...',
-        })
-
-        // 上传到云存储进行临时处理
-        this.uploadImageForOCR(tempFilePath)
-      },
-    })
-  },
-
-  // 上传图片到云存储进行OCR识别
-  uploadImageForOCR(filePath) {
-    const cloudPath = `temp_ocr/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`
-
-    wx.cloud.uploadFile({
-      cloudPath: cloudPath,
-      filePath: filePath,
-      success: res => {
-        // 获取图片的云存储路径
-        const fileID = res.fileID
-
-        // 调用OCR识别
-        this.recognizeCheckupRecord(fileID)
-      },
-      fail: err => {
-        wx.hideLoading()
-        wx.showToast({
-          title: '上传失败',
-          icon: 'none',
-        })
-        console.error('上传产检记录失败', err)
-      },
-    })
-  },
-
-  // 识别产检记录
-  recognizeCheckupRecord(fileID) {
-    // 调用云函数进行OCR识别
-    wx.cloud.callFunction({
-      name: 'ocrCheckupRecord',
-      data: {
-        fileID: fileID,
-      },
-      success: res => {
-        // 获取OCR识别结果
-        const ocrResult = res.result || {}
-
-        // 删除临时上传的图片
-        this.deleteTemporaryImage(fileID)
-
-        // 使用DeepSeek模型分析OCR结果
-        if (ocrResult.text) {
-          this.analyzeCheckupRecord(ocrResult.text)
-        } else {
-          wx.hideLoading()
-          wx.showToast({
-            title: '未能识别文字',
-            icon: 'none',
-          })
-        }
-      },
-      fail: err => {
-        // OCR识别失败
-        this.deleteTemporaryImage(fileID)
-
-        wx.hideLoading()
-        wx.showToast({
-          title: '识别失败',
-          icon: 'none',
-        })
-        console.error('OCR识别产检记录失败', err)
-      },
-    })
-  },
-
-  // 删除临时上传的图片
-  deleteTemporaryImage(fileID) {
-    wx.cloud.deleteFile({
-      fileList: [fileID],
-      success: res => {
-        console.log('删除临时图片成功', res)
-      },
-      fail: err => {
-        console.error('删除临时图片失败', err)
-      },
-    })
-  },
-
-  // 分析产检记录
-  analyzeCheckupRecord(ocrText) {
-    // 调用云函数使用DeepSeek模型分析
-    wx.cloud.callFunction({
-      name: 'analyzeCheckupRecord',
-      data: {
-        ocrText: ocrText,
-      },
-      success: res => {
-        // 获取分析结果
-        const analysis = res.result || {}
-
-        // 保存分析结果
-        this.saveCheckupAnalysis(analysis.summary, analysis.date)
-
-        wx.hideLoading()
-        wx.showToast({
-          title: '识别成功',
-          icon: 'success',
-        })
-      },
-      fail: err => {
-        wx.hideLoading()
-        wx.showToast({
-          title: '分析失败',
-          icon: 'none',
-        })
-        console.error('分析产检记录失败', err)
-      },
-    })
-  },
-
-  // 保存产检记录分析结果
-  saveCheckupAnalysis(analysisText, date) {
-    // 创建一个新的记录对象
-    const newRecord = {
-      date: date,
-      week: this.calculateWeekFromDate(date),
-      hospital: '通过OCR识别',
-      doctor: '未知',
-      items: [],
-      notes: analysisText,
-    }
-
-    // 获取当前产检记录
-    let checkupRecords = [...this.data.checkupRecords]
-
-    // 检查是否已存在相同日期的记录
-    const existingIndex = checkupRecords.findIndex(record => record.date === date)
-
-    if (existingIndex === -1) {
-      // 添加新记录
-      checkupRecords.push(newRecord)
-    } else {
-      // 更新已有记录
-      checkupRecords[existingIndex] = {
-        ...checkupRecords[existingIndex],
-        notes: analysisText,
-      }
-    }
-
-    // 更新页面数据
-    this.setData({
-      checkupRecords: checkupRecords,
-      checkupAnalysis: analysisText,
-    })
-
-    // 更新提示词
-    this.updateHealthRecordsAndPrompt('checkupRecords', this.data.checkupRecords)
-
-    // 更新健康记录
-    this.updateHealthRecords()
-
-    console.log('产检记录分析结果已保存')
-  },
-
   // 根据日期计算孕周
   calculateWeekFromDate(dateStr) {
     // 解析日期字符串
@@ -1594,18 +1401,6 @@ Page({
 
     // 如果没有预产期信息，返回默认值
     return 0
-  },
-
-  // 预览产检记录照片
-  previewCheckupRecord(e) {
-    // 此方法已不再需要，因为我们不再保存照片
-    // 保留方法以避免可能的引用错误
-  },
-
-  // 删除产检记录照片
-  deleteCheckupRecord(e) {
-    // 此方法已不再需要，因为我们不再保存照片
-    // 保留方法以避免可能的引用错误
   },
 
   // =============================================

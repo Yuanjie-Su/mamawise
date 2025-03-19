@@ -17,7 +17,7 @@
     </view>
     <button wx:if="{{!isLoggedIn}}" class="login-btn" bindtap="login">登录</button>
   </view>
-  
+
   <!-- 日历卡片 -->
   <view class="calendar-card">
     <view class="calendar-content">

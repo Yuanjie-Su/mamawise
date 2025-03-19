@@ -10,6 +10,7 @@ Page({
   data: {
     notes: [],
     loading: true,
+    shareNoteId: null,
   },
 
   // =============================================
@@ -136,102 +137,30 @@ Page({
     const note = this.data.notes.find(item => item.id === id)
 
     if (note) {
-      // 显示分享菜单
-      wx.showActionSheet({
-        itemList: ['分享给朋友', '生成图片分享'],
-        success: res => {
-          if (res.tapIndex === 0) {
-            // 分享给朋友，由于小程序限制，这里只能通过按钮触发
-            wx.showToast({
-              title: '请点击右上角分享',
-              icon: 'none',
-            })
-          } else if (res.tapIndex === 1) {
-            // 生成图片分享
-            this.generateShareImage(note)
-          }
-        },
+      // 设置要分享的笔记
+      this.setData({
+        shareNoteId: id,
       })
     }
   },
 
   /**
-   * 生成分享图片
+   * 用户点击右上角分享
    */
-  generateShareImage: function (note) {
-    wx.showLoading({
-      title: '生成图片中...',
-    })
+  onShareAppMessage: function () {
+    // 获取要分享的笔记
+    const noteId = this.data.shareNoteId
+    let note = this.data.notes.find(item => item.id === noteId)
 
-    // 创建画布上下文
-    const ctx = wx.createCanvasContext('shareCanvas')
-
-    // 设置画布背景
-    ctx.setFillStyle('#ffffff')
-    ctx.fillRect(0, 0, 300, 400)
-
-    // 设置文本样式
-    ctx.setFontSize(14)
-    ctx.setFillStyle('#333333')
-
-    // 绘制文本（处理文本换行）
-    const text = note.content
-    const maxWidth = 260
-    let lastSubStrIndex = 0
-    let lineHeight = 20
-    let startY = 40
-
-    for (let i = 0; i < text.length; i++) {
-      let lineWidth = ctx.measureText(text.substring(lastSubStrIndex, i)).width
-      if (lineWidth > maxWidth) {
-        ctx.fillText(text.substring(lastSubStrIndex, i - 1), 20, startY)
-        startY += lineHeight
-        lastSubStrIndex = i - 1
-      }
-      if (i === text.length - 1) {
-        ctx.fillText(text.substring(lastSubStrIndex, i + 1), 20, startY)
-      }
+    if (!note && this.data.notes.length > 0) {
+      // 如果没有指定笔记，则分享第一条笔记
+      note = this.data.notes[0]
     }
 
-    // 绘制底部水印
-    ctx.setFontSize(12)
-    ctx.setFillStyle('#999999')
-    ctx.fillText('来自妈妈智慧小程序', 20, startY + 40)
-
-    // 绘制完成
-    ctx.draw(false, () => {
-      setTimeout(() => {
-        // 将画布内容保存为图片
-        wx.canvasToTempFilePath({
-          canvasId: 'shareCanvas',
-          success: res => {
-            wx.hideLoading()
-            // 保存图片到相册
-            wx.saveImageToPhotosAlbum({
-              filePath: res.tempFilePath,
-              success: () => {
-                wx.showToast({
-                  title: '图片已保存到相册',
-                  icon: 'success',
-                })
-              },
-              fail: () => {
-                wx.showToast({
-                  title: '保存失败，请授权相册权限',
-                  icon: 'none',
-                })
-              },
-            })
-          },
-          fail: () => {
-            wx.hideLoading()
-            wx.showToast({
-              title: '生成图片失败',
-              icon: 'none',
-            })
-          },
-        })
-      }, 100)
-    })
+    return {
+      title: note ? note.title || '智孕笔记' : '我的智孕笔记',
+      path: note ? `/pages/note-detail/note-detail?id=${note.id}` : '/pages/notes/notes',
+      imageUrl: '/images/share-cover.png',
+    }
   },
 })

@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
   CHAT_HISTORY: 'chatHistory', // 聊天历史
   HEALTH_RECORDS_PROMPT: 'healthRecordsPrompt', // 健康记录提示词
   HEALTH_RECORDS: 'healthRecords', // 健康记录
-  NOTES: 'notes', // 笔记
+  NOTES: 'notes', // 笔记 
   CHAT_HISTORY_UNSAVED_COUNTER: 'chatHistoryUnsavedCounter', // 未保存聊天记录计数器
   NOTES_CHANGED: 'notesChanged', // 笔记列表是否发生变化
   HEALTH_RECORDS_PROMPT_CHANGED: 'healthRecordsPromptChanged', // 健康记录提示词是否发生变化
@@ -36,8 +36,6 @@ const DEFAULT_HEALTH_RECORDS = {
   heartRateRecords: [],
   fetalMovementRecords: [],
   medications: [],
-  checkupRecords: [],
-  checkupAnalysis: '',
 }
 // 云函数名称
 const CLOUD_FUNCTIONS = {

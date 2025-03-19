@@ -29,6 +29,4 @@
     </view>
   </view>
   
-  <!-- 用于生成分享图片的画布（隐藏） -->
-  <canvas canvas-id="shareCanvas" style="width: 300px; height: 400px; position: fixed; top: -1000px;"></canvas>
 </view> 

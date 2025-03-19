@@ -74,13 +74,6 @@ async function generateAIResponse(messages, userQuery, prompt, model_name, onPro
       const text = data?.choices?.[0]?.delta?.content
 
       if (text && onProgress) {
-        // // 去除开头的空白行
-        // let processedText = text
-        // if (!hasReceivedFirstContent) {
-        //   processedText = text.replace(/^\n+/, '')
-        //   hasReceivedFirstContent = true
-        // }
-
         onProgress(text)
       }
     }

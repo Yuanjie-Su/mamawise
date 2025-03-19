@@ -208,6 +208,7 @@ async function clearChatHistoryOnCloud() {
  */
 async function deleteChatHistoryOnCloud(messageId) {
   try {
+    Logger.info('删除消息云端', messageId)
     const res = await wx.cloud.callFunction({
       name: CLOUD_FUNCTIONS.DELETE_CHAT_HISTORY,
       data: { messageId },
