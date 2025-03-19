@@ -81,8 +81,6 @@ async function login(healthRecords) {
       data: { userInfo, healthRecords },
     })
 
-    console.log('cloudRes', cloudRes)
-
     if (cloudRes.result.success) {
       return cloudRes.result.data
     } else {

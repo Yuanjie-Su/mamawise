@@ -6,7 +6,7 @@ import aiService from '../../services/aiService'
 import chatService from '../../services/chatService'
 import markdownUtil from '../../utils/markdownUtil'
 
-const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS, DEFAULT_AI_CONFIG } = appConfig
+const { STORAGE_KEYS, MODEL_CONFIG, DEFAULT_AI_CONFIG } = appConfig
 
 Page({
   data: {
@@ -26,12 +26,8 @@ Page({
     recommendedQuestions: [],
     // 用户登录状态
     isLoggedIn: false,
-    // 当前模型的显示名称
+    // 当前模型的名称（从设置中读取）
     currentModelName: DEFAULT_AI_CONFIG.MODEL,
-    // 是否显示模型选择器
-    showModelSelector: false,
-    // 可用的模型类型列表
-    modelOptions: MODEL_OPTIONS,
     // 回复风格
     replyStyle: 'default',
     // 分享内容
@@ -59,6 +55,8 @@ Page({
   async onLoad() {
     // 初始化
     this.loadData()
+    // 加载上次使用的模型
+    this.loadModelSettings()
   },
 
   async onShow() {
@@ -66,6 +64,9 @@ Page({
     if (app.globalData.isLoggedIn !== this.data.isLoggedIn) {
       this.loadData()
     }
+
+    // 检查模型设置是否变化
+    this.loadModelSettings()
   },
 
   loadData() {
@@ -240,90 +241,6 @@ Page({
         }
       },
     })
-  },
-
-  // 切换模型选择器的显示状态
-  toggleModelSelector() {
-    this.setData({
-      showModelSelector: !this.data.showModelSelector,
-    })
-  },
-
-  // 选择模型
-  selectModel(e) {
-    const model_name = e.currentTarget.dataset.model
-    this.switchModel(model_name)
-    this.setData({
-      showModelSelector: false,
-    })
-  },
-
-  // 切换模型类型
-  switchModel(model_name) {
-    // 检查提供的模型类型是否有效
-    const modelConfig = MODEL_CONFIG[model_name]
-
-    if (modelConfig) {
-      this.setData({
-        currentModelName: modelConfig.name,
-      })
-
-      // 保存用户选择的模型到本地存储
-      try {
-        wx.setStorageSync('lastUsedModel', model_name)
-      } catch (error) {
-        Logger.error('保存模型选择时出错:', error)
-      }
-
-      // 显示切换成功的提示
-      wx.showToast({
-        title: `已切换至 ${modelConfig.name}`,
-        icon: 'none',
-        duration: 1500,
-      })
-
-      // 记录模型切换日志
-      Logger.info(`模型已切换至 ${modelConfig.name} (${modelConfig.api})`)
-    } else {
-      // 显示错误提示
-      wx.showToast({
-        title: '无效的模型类型',
-        icon: 'error',
-        duration: 1500,
-      })
-
-      Logger.error(`尝试切换至无效的模型类型: ${modelId}`)
-    }
-  },
-
-  // 关闭模型选择器
-  closeModelSelector() {
-    if (this.data.showModelSelector) {
-      this.setData({
-        showModelSelector: false,
-      })
-    }
-  },
-
-  // 阻止事件冒泡
-  stopPropagation() {
-    // 仅用于阻止事件冒泡，不需要实际操作
-    return
-  },
-
-  // 恢复上次使用的模型
-  restoreLastUsedModel() {
-    // 判断本地存储中是否存在lastUsedModel
-    const lastUsedModel = wx.getStorageSync('lastUsedModel')
-    if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
-      const modelConfig = MODEL_CONFIG[lastUsedModel]
-      this.setData({
-        currentModelName: modelConfig.name,
-      })
-      Logger.info(`已恢复上次使用的模型: ${lastUsedModel} (${modelConfig.name})`)
-    } else {
-      Logger.info('本地存储中不存在lastUsedModel')
-    }
   },
 
   // 清空输入框内容
@@ -1045,5 +962,24 @@ Page({
       selectedMessageType: type,
       showMessageActionMenu: true,
     })
+  },
+
+  // 加载模型设置
+  loadModelSettings() {
+    try {
+      // 从本地存储获取当前模型
+      const lastUsedModel = wx.getStorageSync('lastUsedModel')
+      if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
+        const modelConfig = MODEL_CONFIG[lastUsedModel]
+        if (this.data.currentModelName !== modelConfig.name) {
+          this.setData({
+            currentModelName: modelConfig.name,
+          })
+          Logger.info(`已加载模型设置: ${lastUsedModel} (${modelConfig.name})`)
+        }
+      }
+    } catch (error) {
+      Logger.error('加载模型设置失败', error)
+    }
   },
 })

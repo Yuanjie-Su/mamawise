@@ -3,6 +3,41 @@
   <view class="settings-header">
     <view class="header-title">设置</view>
   </view>
+
+  <!-- 模型设置 -->
+  <view class="settings-section">
+    <view class="settings-item" bindtap="toggleModelOptions">
+      <text class="item-label">AI模型设置</text>
+      <view class="item-action">
+        <text class="model-selected">{{currentModelName}}</text>
+        <text class="arrow">></text>
+      </view>
+    </view>
+    
+    <!-- 模型选项滑出层 -->
+    <view class="model-options-slide {{showModelOptions ? 'show' : ''}}" catchtap="closeModelOptions">
+      <view class="model-options-container" catchtap="stopPropagation">
+        <view class="model-options-header">
+          <text class="model-options-title">选择AI模型</text>
+          <view class="close-btn" catchtap="closeModelOptions">×</view>
+        </view>
+        <view class="model-options-content">
+          <block wx:for="{{modelOptions}}" wx:key="api">
+            <view class="model-option {{currentModelName === item.name ? 'selected' : ''}}" 
+                  bindtap="selectModel" data-model="{{item.api}}">
+              <view class="model-option-content">
+                <view class="model-name">{{item.name}}</view>
+                <view class="model-description">{{item.description}}</view>
+              </view>
+              <view class="model-selected-indicator" wx:if="{{currentModelName === item.name}}">
+                <image class="selected-icon" src="/images/icons/selected.png" mode="aspectFit"></image>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
   
   <!-- 关于 -->
   <view class="settings-section">
@@ -12,19 +47,15 @@
       <text class="arrow">></text>
     </view>
     <view class="about-content" wx:if="{{showAboutInfo}}">
-      <image class="app-logo" src="/images/mamawise.png" mode="aspectFit"></image>
-      <view class="app-name">孕期AI助手</view>
+      <image class="app-logo" src="/images/smart_pregnancy.png" mode="aspectFit"></image>
+      <view class="app-name">智孕</view>
       <view class="app-desc">您的智能孕期伴侣</view>
       <view class="app-info">
-        <text>孕期AI助手是一款专为孕期女性设计的智能应用，提供健康咨询、健康档案管理等服务，帮助孕妈妈更好地了解和管理孕期健康。</text>
+        <text>智孕是一款专为孕期女性设计的智能应用，提供健康咨询、健康档案管理等服务，帮助孕妈妈更好地了解和管理孕期健康。</text>
       </view>
     </view>
     <view class="settings-item" bindtap="viewPrivacyPolicy">
       <text class="item-label">隐私政策</text>
-      <text class="arrow">></text>
-    </view>
-    <view class="settings-item" bindtap="viewUserAgreement">
-      <text class="item-label">用户协议</text>
       <text class="arrow">></text>
     </view>
     <view class="settings-item">

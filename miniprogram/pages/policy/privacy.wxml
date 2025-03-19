@@ -3,84 +3,107 @@
   <view class="policy-header">
     <view class="header-title">隐私政策</view>
   </view>
-  
+
   <view class="policy-content">
     <view class="policy-section">
       <view class="section-title">引言</view>
       <view class="section-content">
-        <text>妈妈智慧（"我们"、"我们的"或"本应用"）尊重并保护用户（"您"或"用户"）的隐私。本隐私政策旨在向您说明我们如何收集、使用、存储和共享您的个人信息，以及您享有的相关权利。请您在使用我们的服务前仔细阅读本隐私政策。</text>
+        <text>智孕（"我们"、"我们的"或"本应用"）尊重并保护用户（"您"或"用户"）的隐私。本隐私政策旨在向您说明我们如何收集、使用、存储和共享您的个人信息，以及您享有的相关权利。请您在使用我们的服务前仔细阅读本隐私政策。</text>
       </view>
     </view>
-    
+
     <view class="policy-section">
       <view class="section-title">信息收集</view>
       <view class="section-content">
         <text>我们可能收集以下类型的信息：</text>
-        <view class="content-item">1. 您提供的信息：包括但不限于您的姓名、年龄、孕周、预产期、身高、体重、过敏信息、饮食偏好等个人信息。</view>
-        <view class="content-item">2. 设备信息：包括但不限于设备型号、操作系统版本、设备设置、应用程序版本号等信息。</view>
-        <view class="content-item">3. 日志信息：包括但不限于您使用我们的服务的详细信息，如搜索查询内容、IP地址、浏览器类型、电信运营商、使用的语言、访问日期和时间等。</view>
+        <view class="content-item">1. 您提供的信息：包括但不限于您的昵称、头像、孕期阶段、健康记录（如体重、血压、血糖等）、过敏情况、饮食偏好等个人信息。</view>
+        <view class="content-item">2. 聊天内容：您与AI助手的对话内容，包括您提出的问题和AI回复的内容。</view>
+        <view class="content-item">3. 笔记内容：您在应用中保存的笔记文本和图片。</view>
+        <view class="content-item">4. 设备信息：包括但不限于设备型号、操作系统版本、设备设置、微信版本号等信息。</view>
+        <view class="content-item">5. 日志信息：包括但不限于您使用我们的服务的详细信息，如AI模型使用记录、会话持续时间、使用的语言、访问时间等。</view>
       </view>
     </view>
-    
+
+    <view class="policy-section">
+      <view class="section-title">AI功能与数据处理</view>
+      <view class="section-content">
+        <text>本应用使用人工智能技术为您提供个性化的孕期咨询和健康建议：</text>
+        <view class="content-item">1. AI模型选择：我们提供多种AI模型供您选择（如DeepSeek-v3、DeepSeek-r1等），不同模型可能具有不同的性能特点。</view>
+        <view class="content-item">2. 数据处理：您的健康记录和聊天内容会用于生成AI回复，以提供个性化建议。</view>
+        <view class="content-item">3. 数据保护：我们采取严格措施保护您的数据在AI处理过程中的安全性。</view>
+        <view class="content-item">4. 数据改进：在您同意的情况下，我们可能使用匿名化的数据来改进AI模型性能和应用体验。</view>
+      </view>
+    </view>
+
     <view class="policy-section">
       <view class="section-title">信息使用</view>
       <view class="section-content">
         <text>我们可能将收集的信息用于以下目的：</text>
-        <view class="content-item">1. 提供、维护和改进我们的服务。</view>
-        <view class="content-item">2. 开发新的服务或功能。</view>
-        <view class="content-item">3. 了解用户如何使用我们的服务，以便改进用户体验。</view>
-        <view class="content-item">4. 向您提供客户服务，包括回应您的请求、问题和意见。</view>
-        <view class="content-item">5. 向您发送与服务相关的通知，如产检提醒和健康提示。</view>
+        <view class="content-item">1. 提供智能孕期咨询服务，包括健康建议、饮食指导和情绪支持。</view>
+        <view class="content-item">2. 维护和改进我们的AI助手，提高回答质量和准确性。</view>
+        <view class="content-item">3. 开发新的功能，如健康记录分析和个性化孕期建议。</view>
+        <view class="content-item">4. 了解用户如何使用我们的服务，优化用户体验和界面设计。</view>
+        <view class="content-item">5. 向您提供技术支持，包括回应您的问题和反馈。</view>
+        <view class="content-item">6. 在必要时向您发送服务相关通知，如产检提醒和健康提示。</view>
       </view>
     </view>
-    
+
+    <view class="policy-section">
+      <view class="section-title">信息存储</view>
+      <view class="section-content">
+        <text>我们采取以下方式存储您的信息：</text>
+        <view class="content-item">1. 本地存储：部分数据(如聊天历史、健康记录、笔记等)存储在您的设备本地，您可以通过清除缓存功能删除这些数据。</view>
+        <view class="content-item">2. 云端存储：在您登录后，我们会将您的数据同步至云端以便您在不同设备间使用。</view>
+        <view class="content-item">3. 数据保留：我们只在必要的时间内保留您的数据，除非法律要求更长的保留期限。</view>
+      </view>
+    </view>
+
     <view class="policy-section">
       <view class="section-title">信息共享</view>
       <view class="section-content">
-        <text>我们不会将您的个人信息出售给第三方。我们可能在以下情况下共享您的个人信息：</text>
+        <text>我们不会将您的个人信息出售给第三方。我们可能在以下情况下共享您的信息：</text>
         <view class="content-item">1. 在获得您的明确同意后。</view>
-        <view class="content-item">2. 与我们的关联公司共享。</view>
-        <view class="content-item">3. 与授权合作伙伴共享，以提供特定服务。</view>
+        <view class="content-item">2. 与AI服务提供商共享必要信息，以便提供智能咨询服务。</view>
+        <view class="content-item">3. 与授权合作伙伴共享，以提供特定功能或服务。</view>
         <view class="content-item">4. 根据法律法规、法律程序或政府强制性要求。</view>
       </view>
     </view>
-    
+
     <view class="policy-section">
       <view class="section-title">信息安全</view>
       <view class="section-content">
-        <text>我们采取合理的安全措施保护您的个人信息，防止未经授权的访问、使用或披露。尽管如此，请注意，没有任何安全措施是完美的或不可破解的。</text>
+        <text>我们采取合理的安全措施保护您的个人信息，包括数据加密、访问控制和安全存储，防止未经授权的访问、使用或泄露。尽管如此，请注意，互联网环境并非百分之百安全，我们无法保证信息传输的绝对安全性。</text>
       </view>
     </view>
-    
+
     <view class="policy-section">
       <view class="section-title">您的权利</view>
       <view class="section-content">
         <text>您对自己的个人信息拥有以下权利：</text>
-        <view class="content-item">1. 访问：您有权访问我们持有的关于您的个人信息。</view>
-        <view class="content-item">2. 更正：您有权更正不准确的个人信息。</view>
-        <view class="content-item">3. 删除：在某些情况下，您有权要求删除您的个人信息。</view>
-        <view class="content-item">4. 限制处理：在某些情况下，您有权限制我们处理您的个人信息。</view>
-        <view class="content-item">5. 数据可携带性：您有权以结构化、常用和机器可读的格式接收您的个人信息，并有权将这些信息传输给另一个控制者。</view>
+        <view class="content-item">1. 访问与更正：您可以在应用中查看和修改您的个人信息和健康记录。</view>
+        <view class="content-item">2. 删除：您可以删除特定的聊天记录、笔记或健康数据，也可以通过清除缓存功能删除本地数据。</view>
+        <view class="content-item">3. 注销：您可以通过"退出登录"功能暂时停止使用我们的服务。</view>
+        <view class="content-item">4. 选择：您可以自由选择使用哪种AI模型，以及是否保存聊天记录。</view>
+        <view class="content-item">5. 导出：您可以将聊天内容保存为图片或添加为笔记。</view>
       </view>
     </view>
-    
+
+    <view class="policy-section">
+      <view class="section-title">儿童隐私</view>
+      <view class="section-content">
+        <text>我们的服务主要面向成年女性，特别是孕期妈妈。我们不会故意收集16岁以下儿童的个人信息。如果您发现我们无意中收集了儿童的信息，请立即联系我们，我们将采取措施删除相关信息。</text>
+      </view>
+    </view>
+
     <view class="policy-section">
       <view class="section-title">政策更新</view>
       <view class="section-content">
-        <text>我们可能会不时更新本隐私政策。当我们更新本隐私政策时，我们会在本页面上发布更新后的隐私政策，并更新"最后更新日期"。</text>
+        <text>我们可能会不时更新本隐私政策。当我们更新本隐私政策时，我们会在本页面上发布更新后的隐私政策，并更新"最后更新日期"。重大变更可能会通过应用内通知的方式告知您。</text>
       </view>
     </view>
-    
-    <view class="policy-section">
-      <view class="section-title">联系我们</view>
-      <view class="section-content">
-        <text>如果您对本隐私政策有任何疑问或建议，请通过以下方式联系我们：</text>
-        <view class="content-item">电子邮件：support@mamawise.com</view>
-      </view>
-    </view>
-    
+
     <view class="policy-footer">
-      <text>最后更新日期：2024年3月7日</text>
+      <text>最后更新日期：2025年3月19日</text>
     </view>
   </view>
-</view> 
+</view>

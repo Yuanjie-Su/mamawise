@@ -2,13 +2,16 @@ const app = getApp()
 import Logger from '../../utils/logger'
 import appConfig from '../../config/appConfig'
 
-const { STORAGE_KEYS } = appConfig
+const { STORAGE_KEYS, MODEL_CONFIG, MODEL_OPTIONS, DEFAULT_AI_CONFIG } = appConfig
 
 Page({
   data: {
     cacheSize: '0KB',
     showAboutInfo: false,
     isLoggedIn: false,
+    modelOptions: MODEL_OPTIONS,
+    currentModelName: DEFAULT_AI_CONFIG.MODEL,
+    showModelOptions: false,
   },
 
   // =============================================
@@ -18,6 +21,7 @@ Page({
   onLoad(options) {
     Logger.info('设置页面加载')
     this.calculateCacheSize()
+    this.loadModelSettings()
     this.setData({
       isLoggedIn: app.globalData.isLoggedIn,
     })
@@ -35,6 +39,11 @@ Page({
         }, 300)
       }
     }
+  },
+
+  onShow() {
+    // 每次显示页面时重新加载模型设置
+    this.loadModelSettings()
   },
 
   // =============================================
@@ -164,11 +173,101 @@ Page({
     wx.navigateTo({
       url: '/pages/policy/privacy',
     })
+    Logger.info('用户查看隐私政策')
   },
 
-  // 查看用户协议
-  viewUserAgreement() {
-    // 这里可以跳转到用户协议页面或者显示用户协议内容
-    Logger.info('用户查看用户协议')
+  // =============================================
+  // 模型设置相关函数
+  // =============================================
+
+  // 切换模型选项滑出层显示状态
+  toggleModelOptions() {
+    this.setData({
+      showModelOptions: true,
+    })
+    Logger.info('用户打开模型选项滑出层')
+  },
+
+  // 关闭模型选项滑出层
+  closeModelOptions() {
+    this.setData({
+      showModelOptions: false,
+    })
+    Logger.info('用户关闭模型选项滑出层')
+  },
+
+  // 阻止事件冒泡
+  stopPropagation() {
+    // 仅用于阻止事件冒泡
+    return
+  },
+
+  // 加载模型设置
+  loadModelSettings() {
+    try {
+      // 从本地存储获取当前模型
+      const lastUsedModel = wx.getStorageSync('lastUsedModel')
+      if (lastUsedModel && MODEL_CONFIG[lastUsedModel]) {
+        const modelConfig = MODEL_CONFIG[lastUsedModel]
+        this.setData({
+          currentModelName: modelConfig.name,
+        })
+        Logger.info(`已加载模型设置: ${lastUsedModel} (${modelConfig.name})`)
+      }
+    } catch (error) {
+      Logger.error('加载模型设置失败', error)
+    }
+  },
+
+  // 选择模型
+  selectModel(e) {
+    const modelApi = e.currentTarget.dataset.model
+
+    // 查找对应的模型配置
+    let selectedModel = null
+    for (const key in MODEL_CONFIG) {
+      if (MODEL_CONFIG[key].api === modelApi) {
+        selectedModel = key
+        break
+      }
+    }
+
+    if (selectedModel && MODEL_CONFIG[selectedModel]) {
+      const modelConfig = MODEL_CONFIG[selectedModel]
+      this.setData({
+        currentModelName: modelConfig.name,
+        showModelOptions: false, // 选择后关闭滑出层
+      })
+
+      // 保存用户选择的模型到本地存储
+      try {
+        wx.setStorageSync('lastUsedModel', selectedModel)
+
+        // 显示切换成功的提示
+        wx.showToast({
+          title: `已切换至 ${modelConfig.name}`,
+          icon: 'success',
+          duration: 1500,
+        })
+
+        // 记录模型切换日志
+        Logger.info(`模型已切换至 ${modelConfig.name} (${modelConfig.api})`)
+      } catch (error) {
+        Logger.error('保存模型选择时出错:', error)
+        wx.showToast({
+          title: '设置失败',
+          icon: 'error',
+          duration: 1500,
+        })
+      }
+    } else {
+      // 显示错误提示
+      wx.showToast({
+        title: '无效的模型类型',
+        icon: 'error',
+        duration: 1500,
+      })
+      Logger.error(`尝试切换至无效的模型类型: ${modelApi}`)
+    }
   },
 })

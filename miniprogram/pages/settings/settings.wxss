@@ -142,4 +142,134 @@
   border-radius: 10rpx;
   padding: 20rpx 0;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 模型选项滑出层样式 */
+.model-selected {
+  font-size: 28rpx;
+  color: var(--text-light);
+  margin-right: 10rpx;
+}
+
+.model-options-slide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.model-options-slide.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.model-options-container {
+  width: 90%;
+  max-width: 650rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transform: translateY(50rpx);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.model-options-slide.show .model-options-container {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.model-options-header {
+  padding: 30rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.model-options-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.close-btn {
+  font-size: 40rpx;
+  color: #999;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.model-options-content {
+  padding: 20rpx;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* 模型选项样式 */
+.model-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+  background-color: #f9f9f9;
+  border: 2rpx solid #eaeaea;
+  transition: all 0.3s ease;
+}
+
+.model-option:last-child {
+  margin-bottom: 0;
+}
+
+.model-option.selected {
+  background-color: rgba(var(--primary-color-rgb), 0.05);
+  border-color: var(--primary-color);
+}
+
+.model-option-content {
+  flex: 1;
+}
+
+.model-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--text-light);
+  margin-bottom: 8rpx;
+}
+
+.model-description {
+  font-size: 28rpx;
+  color: var(--text-light);
+}
+
+.model-selected-indicator {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.selected-icon {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.model-option:active {
+  transform: scale(0.98);
 } 

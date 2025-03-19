@@ -3,34 +3,20 @@
   <!-- 隐藏的canvas用于生成分享图片 -->
   <canvas type="2d" id="shareCanvas" style="position: absolute; left: -9999px; width: 750px; height: {{canvasHeight}}px;"></canvas>
 
-  <view class="chat-header">
-    <view class="model-display">
-      <button class="model-button" catchtap="toggleModelSelector">
-        <text class="model-name">{{currentModelName}}</text>
-        <view class="dropdown-icon">▼</view>
-      </button>
-    </view>
-    <view class="header-actions">
-      <view class="placeholder"></view>
-    </view>
-  </view>
-
-  <!-- 模型选择器下拉菜单 -->
-  <view class="model-dropdown" wx:if="{{showModelSelector}}" catchtap="stopPropagation">
-    <view class="dropdown-triangle"></view>
-    <view class="model-option {{item.name === currentModelName ? 'selected' : ''}}" wx:for="{{modelOptions}}" wx:key="name" catchtap="selectModel" data-model="{{item.name}}">
-      <view class="model-option-name">{{item.name}}</view>
-      <view class="model-option-desc">{{item.description}}</view>
-    </view>
-  </view>
-
   <scroll-view scroll-y="true" class="message-list" scroll-top="{{scrollTop}}" id="message-container" enhanced="true" show-scrollbar="false" scroll-anchoring="true" bounces="{{false}}" enable-flex="true">
 
     <view class="message-list-content">
-      <!-- 推荐问题区域，仅在没有消息时显示 -->
-      <view class="recommended-questions" wx:if="{{messages.length === 0}}">
-        <view class="recommended-question" wx:for="{{recommendedQuestions}}" wx:for-item="question" wx:key="*this" bindtap="onRecommendedQuestion" data-question="{{question}}">
-          {{question}}
+      <!-- 当没有消息时，显示欢迎页面 -->
+      <view class="welcome-container" wx:if="{{messages.length === 0}}">
+        <image class="app-logo" src="/images/smart_pregnancy.png" mode="aspectFit"></image>
+        <view class="welcome-text">您好，我是智孕AI助手</view>
+        <view class="welcome-subtext">有任何孕期相关问题，请随时向我咨询</view>
+
+        <!-- 推荐问题区域 -->
+        <view class="recommended-questions">
+          <view class="recommended-question" wx:for="{{recommendedQuestions}}" wx:for-item="question" wx:key="*this" bindtap="onRecommendedQuestion" data-question="{{question}}">
+            {{question}}
+          </view>
         </view>
       </view>
 
